@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "pkg/proto";
+
+service ScraperService {
+  rpc FetchData (FetchRequest) returns (FetchResponse);
+}
+
+message FetchRequest {
+  string url = 1;
+}
+
+message FetchResponse {
+  string data = 1;
+}
