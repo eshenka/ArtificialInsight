@@ -3,27 +3,13 @@ syntax = "proto3";
 package llms;
 
 service LLMService {
-    // Generate embeddings for the given texts
-    // Use the model name to select the model
-    // Use any model if model name is not provided
-    rpc GenerateEmbeddings(GenerateEmbeddingsRequest) returns (GenerateEmbeddingsResponse);
-
     // Generate answer for the given user prompt
     // using the relevant context
     rpc GenerateAnswer(GenerateAnswerRequest) returns (GenerateAnswerResponse);
 
-    // Get available models for the given type
-    // If type is not provided, return models for both types
+    // Get available LLMs
+    // Filter by language
     rpc GetAvailableModels(GetAvailableModelsRequest) returns (GetAvailableModelsResponse);
-}
-
-message GenerateEmbeddingsRequest {
-    string model_name = 1;
-    repeated string texts = 2;
-}
-
-message GenerateEmbeddingsResponse {
-    repeated Embedding embeddings = 1;
 }
 
 message GenerateAnswerRequest {
@@ -37,21 +23,16 @@ message GenerateAnswerResponse {
 }
 
 message GetAvailableModelsRequest {
-    ModelType type = 1;
+    string language = 1;
 }
 
 message GetAvailableModelsResponse {
     repeated Model models = 1;
 }
 
-enum ModelType {
-    LLM = 0;
-    EMBEDDING = 1;
-}
-
 message Model {
     string name = 1;
-    ModelType type = 2;
+    string provider = 2;
     string language = 3;
 }
 
@@ -67,8 +48,4 @@ message Document {
 
     // Relevance of the document (higher is more relevant)
     float score = 3;
-}
-
-message Embedding {
-    repeated float vector = 1;
 }
