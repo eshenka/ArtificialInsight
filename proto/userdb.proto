@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package userdb;
+
+service DatabaseService {
+    // Get user by ID
+    rpc GetUser (GetUserRequest) returns (GetUserResponse) {}
+
+    // Create a new user
+    // Returns the ID of the created user
+    // The user ID in the request is ignored
+    // The token in the request is ignored
+    rpc CreateUser (CreateUserRequest) returns (CreateUserResponse) {}
+
+    // Update an existing user
+    // The user ID in the request is required and must exist in the database
+    // Only non-null fields in the request will be updated
+    rpc UpdateUser (UpdateUserRequest) returns (UpdateUserResponse) {}
+
+    // Delete a user by ID
+    // The user ID in the request is required and must exist in the database
+    rpc DeleteUser (DeleteUserRequest) returns (DeleteUserResponse) {}
+
+    // Add to the number of requests made by the user
+    rpc UpdateUserRequestCount (UpdateUserRequestCountRequest) returns (UpdateUserRequestCountResponse) {}
+}
+
+message GetUserRequest {
+    uint64 user_id = 1;
+}
+
+message GetUserResponse {
+    User user = 1;
+}
+
+message DeleteUserRequest {
+    uint64 user_id = 1;
+}
+
+message DeleteUserResponse {
+    User user = 1;
+}
+
+message CreateUserRequest {
+    User user = 1;
+}
+
+message CreateUserResponse {
+    uint64 user_id = 1;
+}
+
+message UpdateUserRequest {
+    User user = 1;
+}
+
+message UpdateUserResponse {
+    User user = 1;
+}
+
+message UpdateUserRequestCountRequest {
+    uint64 user_id = 1;
+
+    // How many requests to add to the user
+    uint32 delta = 2;
+}
+
+message UpdateUserRequestCountResponse {
+    // Number of requests made by the user
+    uint64 requests = 1;
+}
+
+message User {
+    uint64 id = 1;
+    string token = 2;
+    string language = 3;
+    string llm_preference = 4;
+    string description = 5;
+
+    // Number of RAG requests made by the user
+    int32 num_requests = 6;
+}

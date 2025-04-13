@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package scraping;
+
+service ScrapingService {
+    // # Scrape documentation
+    //
+    // Start with `entry` URL
+    //
+    // Recursively visit each page with urls that match at least one of
+    // regexes provided in `rules.scrape_patterns`. If a match is found,
+    // extract only the text that is located in the HTML element that matches the `css_selector` 
+    // provided in the rule. If no `css_selector` is provided, use `main` as the default.
+    // 
+    // Do not exceed `rules.max_depth` levels of recursion if `rules.max_depth` is set
+    // or `rules.max_pages` pages if `rules.max_pages` is set
+    // 
+    // Do not visit any page that matches any of the regexes provided in `rules.forbidden_urls`
+    rpc Scrape(ScrapeRequest) returns (ScrapeResponse) {}
+}
+
+message ScrapeRequest {
+    string entry = 1;
+    ScrapeRules rules = 2;
+}
+
+message ScrapeResponse {
+    repeated Page pages = 1;
+}
+
+message ScrapeRules {
+    uint32 max_depth = 1;
+    uint32 max_pages = 2;
+    repeated Rule scrape_patterns = 3;
+    repeated Regex forbidden_urls = 4;
+}
+
+message Rule {
+    Regex url = 1;
+    string css_selector = 2;
+}
+
+message Regex {
+    string pattern = 1;
+}
+
+message Page {
+    string url = 1;
+
+    // Title of the page (<title> tag)
+    string title = 2;
+
+    // Page content (in text or markdown format)
+    string content = 3;
+}
