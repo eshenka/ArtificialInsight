@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package logging;
 
+import "google/protobuf/timestamp.proto";
+
 service LoggingService {
     // Log specific event(s)
     // source is not required
@@ -25,8 +27,8 @@ message LogEventResponse {
 }
 
 message GetLogsRequest {
-    string start_time = 1; 
-    string end_time = 2; 
+    google.protobuf.Timestamp start_time = 1; 
+    google.protobuf.Timestamp end_time = 2; 
 
     // Get logs with this level or higher
     LogLevel level = 3;
@@ -37,8 +39,8 @@ message GetLogsResponse {
 }
 
 message DeleteLogsRequest {
-    string start_time = 1; 
-    string end_time = 2; 
+    google.protobuf.Timestamp start_time = 1; 
+    google.protobuf.Timestamp end_time = 2; 
 
     // Delete logs with this level or lower
     LogLevel level = 3;
@@ -52,7 +54,7 @@ message DeleteLogsResponse {
 message LogEvent {
     string source = 1;
     string message = 2;
-    string timestamp = 3; 
+    google.protobuf.Timestamp timestamp = 3; 
     LogLevel level = 4;
 }
 
@@ -63,4 +65,3 @@ enum LogLevel {
     ERROR = 3;
     CRITICAL = 4;
 }
-

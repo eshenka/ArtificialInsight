@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package common;
+
+message Document {
+    // Source URL of the document
+    string source = 1;
+
+    // Conetent of the document, in Text or Markdown format
+    string content = 3;
+}

@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package llms;
 
+import "common.proto";
+
 service LLMService {
     // Generate answer for the given user prompt
     // using the relevant context
@@ -38,14 +40,6 @@ message Model {
 
 message Context {
     // Information that should be included in the final prompt
-    string system_prompt = 1;
-    repeated Document documents = 2;
-}
-
-message Document {
-    string source = 1;
-    string content = 2;
-
-    // Relevance of the document (higher is more relevant)
-    float score = 3;
+    string info = 1;
+    repeated common.Document documents = 2;
 }

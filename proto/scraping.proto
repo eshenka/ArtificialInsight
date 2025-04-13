@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package scraping;
 
+import "common.proto";
+
 service ScrapingService {
     // # Scrape documentation
     //
@@ -16,6 +18,8 @@ service ScrapingService {
     // or `rules.max_pages` pages if `rules.max_pages` is set
     // 
     // Do not visit any page that matches any of the regexes provided in `rules.forbidden_urls`
+    // 
+    // Try to split each page into multiple documents using a recursive algorithm
     rpc Scrape(ScrapeRequest) returns (ScrapeResponse) {}
 }
 
@@ -25,7 +29,7 @@ message ScrapeRequest {
 }
 
 message ScrapeResponse {
-    repeated Page pages = 1;
+    repeated common.Document documents = 1;
 }
 
 message ScrapeRules {
@@ -42,14 +46,4 @@ message Rule {
 
 message Regex {
     string pattern = 1;
-}
-
-message Page {
-    string url = 1;
-
-    // Title of the page (<title> tag)
-    string title = 2;
-
-    // Page content (in text or markdown format)
-    string content = 3;
 }
