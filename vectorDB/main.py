@@ -10,8 +10,8 @@ from pymilvus import db
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from proto import vectordb_pb2
-from proto import vectordb_pb2_grpc
+import vectordb_pb2
+import vectordb_pb2_grpc
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
