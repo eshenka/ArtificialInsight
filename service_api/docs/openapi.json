@@ -62,6 +62,45 @@
           }
         }
       }
+    },
+    "/pipeline": {
+      "post": {
+        "summary": "Create Pipeline",
+        "description": "Creates a new RAG pipeline by forwarding the request to the controller service.\nAccepts application/x-www-form-urlencoded data.\nThe 'rules' field must be a JSON string representing the ScrapeRules structure.",
+        "operationId": "create_pipeline_pipeline_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_pipeline_pipeline_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PipelineResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -79,6 +118,39 @@
         ],
         "title": "AnswerResponse"
       },
+      "Body_create_pipeline_pipeline_post": {
+        "properties": {
+          "user_name": {
+            "type": "string",
+            "title": "User Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language"
+          },
+          "entry_docs_url": {
+            "type": "string",
+            "title": "Entry Docs Url"
+          },
+          "rules_json": {
+            "type": "string",
+            "title": "Rules Json"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_name",
+          "description",
+          "language",
+          "entry_docs_url",
+          "rules_json"
+        ],
+        "title": "Body_create_pipeline_pipeline_post"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -91,6 +163,19 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "PipelineResponse": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "PipelineResponse"
       },
       "PromptRequest": {
         "properties": {
