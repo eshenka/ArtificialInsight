@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package controller;
 
+import "common.proto";
+
 service Controller {
     // Answer prompt using RAG
     // Use token for identification
