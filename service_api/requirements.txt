@@ -4,3 +4,4 @@ grpcio
 protobuf
 pydantic
 python-dotenv
+python-multipart
