@@ -1,7 +1,8 @@
 import logging
 import grpc
-from fastapi import FastAPI, HTTPException, Header, Depends
-from pydantic import BaseModel
+import json # Added for parsing JSON string in form data
+from fastapi import FastAPI, HTTPException, Header, Depends, Form # Added Form
+from pydantic import BaseModel, ValidationError, Field # Added Field for potential future use
 from typing import Annotated
 
 # Assuming rpc bindings are in the 'rpc' subdirectory relative to this file's location
@@ -9,6 +10,7 @@ from typing import Annotated
 try:
     from rpc import controller_pb2
     from rpc import controller_pb2_grpc
+    from rpc import common_pb2 # Added import for common types
 except ImportError:
     # Handle case where script is run directly for testing, adjust path accordingly
     import sys
@@ -17,6 +19,7 @@ except ImportError:
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
     from rpc import controller_pb2
     from rpc import controller_pb2_grpc
+    from rpc import common_pb2 # Added import for common types
 
 
 from config import CONTROLLER_ADDR, GATEWAY_HTTP_PORT
@@ -35,6 +38,24 @@ class PromptRequest(BaseModel):
 class AnswerResponse(BaseModel):
     answer: str
 
+class PipelineResponse(BaseModel):
+    token: str
+
+# --- Pydantic models for parsing rules from JSON string ---
+# These help validate the structure of the JSON string passed in the form
+class RegexModel(BaseModel):
+    pattern: str
+
+class RuleModel(BaseModel):
+    url: RegexModel
+    css_selector: str | None = None # Optional css_selector
+
+class ScrapeRulesModel(BaseModel):
+    max_depth: int | None = None
+    max_pages: int | None = None
+    scrape_patterns: list[RuleModel] = []
+    forbidden_urls: list[RegexModel] = []
+
 # --- gRPC Client Setup ---
 def get_controller_stub():
     """Dependency to create and manage the gRPC stub."""
@@ -51,7 +72,7 @@ def get_controller_stub():
             channel.close()
             logger.info("gRPC channel closed.")
 
-# --- API Endpoint ---
+# --- API Endpoints ---
 @app.post("/answer", response_model=AnswerResponse)
 async def answer_prompt(
     request_body: PromptRequest,
@@ -80,7 +101,7 @@ async def answer_prompt(
             token=token,
             prompt=request_body.prompt
         )
-        logger.info(f"Sending request to controller at {CONTROLLER_GRPC_ADDRESS}")
+        logger.info(f"Sending request to controller at {CONTROLLER_ADDR}")
         grpc_response = stub.AnswerPrompt(grpc_request, timeout=30) # Add a timeout
         logger.info(f"Received response from controller for token: {token[:5]}...")
         return AnswerResponse(answer=grpc_response.answer)
@@ -108,6 +129,86 @@ async def answer_prompt(
     except Exception as e:
         logger.exception(f"An unexpected error occurred for token {token[:5]}...: {e}") # Log full traceback
         raise HTTPException(status_code=500, detail="Internal server error.")
+
+
+@app.post("/pipeline", response_model=PipelineResponse)
+async def create_pipeline(
+    user_name: Annotated[str, Form()],
+    description: Annotated[str, Form()],
+    language: Annotated[str, Form()],
+    entry_docs_url: Annotated[str, Form()],
+    rules_json: Annotated[str, Form(alias="rules")], # Expect 'rules' field to contain JSON string
+    stub: controller_pb2_grpc.ControllerStub = Depends(get_controller_stub)
+):
+    """
+    Creates a new RAG pipeline by forwarding the request to the controller service.
+    Accepts application/x-www-form-urlencoded data.
+    The 'rules' field must be a JSON string representing the ScrapeRules structure.
+    """
+    logger.info(f"Received create pipeline request for user: {user_name}")
+
+    try:
+        # Parse the JSON string for rules
+        rules_data = json.loads(rules_json)
+        # Validate the parsed JSON using the Pydantic model
+        validated_rules = ScrapeRulesModel.model_validate(rules_data)
+
+        # Construct the common_pb2.ScrapeRules object
+        scrape_rules_proto = common_pb2.ScrapeRules()
+        if validated_rules.max_depth is not None:
+             scrape_rules_proto.max_depth = validated_rules.max_depth
+        if validated_rules.max_pages is not None:
+             scrape_rules_proto.max_pages = validated_rules.max_pages
+
+        for rule_model in validated_rules.scrape_patterns:
+            rule_proto = scrape_rules_proto.scrape_patterns.add()
+            rule_proto.url.pattern = rule_model.url.pattern
+            if rule_model.css_selector is not None:
+                rule_proto.css_selector = rule_model.css_selector
+
+        for regex_model in validated_rules.forbidden_urls:
+             regex_proto = scrape_rules_proto.forbidden_urls.add()
+             regex_proto.pattern = regex_model.pattern
+
+        # Construct the gRPC request
+        grpc_request = controller_pb2.CreatePipelineRequest(
+            user_name=user_name,
+            description=description,
+            language=language,
+            entry_docs_url=entry_docs_url,
+            rules=scrape_rules_proto
+        )
+
+        logger.info(f"Sending CreatePipeline request to controller at {CONTROLLER_ADDR}")
+        grpc_response = stub.CreatePipeline(grpc_request, timeout=60) # Longer timeout for pipeline creation
+        logger.info(f"Pipeline created successfully for user: {user_name}, Token: {grpc_response.token[:5]}...")
+        return PipelineResponse(token=grpc_response.token)
+
+    except json.JSONDecodeError:
+        logger.error(f"Failed to decode JSON for 'rules' field for user {user_name}")
+        raise HTTPException(status_code=422, detail="Invalid JSON format in 'rules' form field.")
+    except ValidationError as e:
+         logger.error(f"Invalid structure in 'rules' JSON for user {user_name}: {e}")
+         raise HTTPException(status_code=422, detail=f"Invalid data in 'rules' field: {e}")
+    except grpc.RpcError as e:
+        logger.error(f"gRPC error during pipeline creation for user {user_name}: {e.details()} (Status: {e.code()})")
+        status_code = 500
+        detail = "Internal server error: Failed to create pipeline via backend service."
+        if e.code() == grpc.StatusCode.INVALID_ARGUMENT:
+             status_code = 422
+             detail = f"Invalid pipeline configuration: {e.details()}"
+        elif e.code() == grpc.StatusCode.UNAVAILABLE:
+             status_code = 503
+             detail = "Backend service is currently unavailable."
+        elif e.code() == grpc.StatusCode.DEADLINE_EXCEEDED:
+             status_code = 504
+             detail = "Request timed out waiting for backend service."
+        # Add more specific gRPC status code mappings as needed
+        raise HTTPException(status_code=status_code, detail=detail)
+    except Exception as e:
+        logger.exception(f"An unexpected error occurred during pipeline creation for user {user_name}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error.")
+
 
 # --- Run Server (for local development) ---
 if __name__ == "__main__":
