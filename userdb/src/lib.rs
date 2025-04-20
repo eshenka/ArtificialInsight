@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use log::{info, warn, debug, error};
 use sqlx::{PgPool, Row, postgres::PgRow};
 use tonic::{Request, Response, Status};
+use uuid::Uuid;
 
 use db_service::*;
 
@@ -41,21 +42,24 @@ impl db_service::database_service_server::DatabaseService for DatabaseService {
             Status::invalid_argument("User data is required")
         })?;
 
-        debug!("Creating user with language: {}, llm_preference: {}", 
-               &user.language, &user.llm_preference);
+        // Generate a random UUID for the token
+        let token = Uuid::new_v4().to_string();
+        
+        debug!("Creating user with token: {}, language: {}, llm_preference: {}", 
+               &token, &user.language, &user.llm_preference);
 
         let result = sqlx::query(
             r#"
             INSERT INTO users (token, language, llm_preference, description, num_requests)
             VALUES ($1, $2, $3, $4, $5)
-            RETURNING id
+            RETURNING token
             "#)
-            .bind(&user.token)
+            .bind(&token)
             .bind(&user.language)
             .bind(&user.llm_preference)
             .bind(&user.description)
             .bind(user.num_requests as i32)
-            .map(|row: PgRow| row.get::<i64, _>("id"))
+            .map(|row: PgRow| row.get::<String, _>("token"))
             .fetch_one(&self.pool)
             .await
             .map_err(|e| {
@@ -63,9 +67,9 @@ impl db_service::database_service_server::DatabaseService for DatabaseService {
                 Status::internal(format!("Failed to create user: {}", e))
             })?;
 
-        info!("User created successfully with ID: {}", result);
+        info!("User created successfully with token: {}", result);
         let response = CreateUserResponse {
-            user_id: result as u64,
+            token: result,
         };
 
         Ok(Response::new(response))
@@ -75,36 +79,35 @@ impl db_service::database_service_server::DatabaseService for DatabaseService {
         &self,
         request: Request<GetUserRequest>,
     ) -> Result<Response<GetUserResponse>, Status> {
-        let user_id = request.into_inner().user_id;
-        debug!("Received request to get user with ID: {}", user_id);
+        let token = request.into_inner().token;
+        debug!("Received request to get user with token: {}", token);
 
         let row = sqlx::query(
             r#"
-            SELECT id, token, language, llm_preference, description, num_requests
+            SELECT token, language, llm_preference, description, num_requests
             FROM users
-            WHERE id = $1
+            WHERE token = $1
             "#)
-            .bind(user_id as i64)
+            .bind(&token)
             .fetch_optional(&self.pool)
             .await
             .map_err(|e| {
-                error!("Database error while fetching user {}: {}", user_id, e);
+                error!("Database error while fetching user {}: {}", token, e);
                 Status::internal(format!("Database error: {}", e))
             })?;
 
         let row = match row {
             Some(row) => {
-                debug!("User found with ID: {}", user_id);
+                debug!("User found with token: {}", token);
                 row
             },
             None => {
-                warn!("User not found with ID: {}", user_id);
-                return Err(Status::not_found(format!("User with ID {} not found", user_id)))
+                warn!("User not found with token: {}", token);
+                return Err(Status::not_found(format!("User with token {} not found", token)))
             }
         };
 
         let user = User {
-            id: row.get::<i64, _>("id") as u64,
             token: row.get("token"),
             language: row.get("language"),
             llm_preference: row.get("llm_preference"),
@@ -130,27 +133,27 @@ impl db_service::database_service_server::DatabaseService for DatabaseService {
             Status::invalid_argument("User data is required")
         })?;
 
-        if user.id == 0 {
-            warn!("Update user request received with ID 0");
-            return Err(Status::invalid_argument("User ID is required"));
+        if user.token.is_empty() {
+            warn!("Update user request received with empty token");
+            return Err(Status::invalid_argument("User token is required"));
         }
 
-        debug!("Updating user with ID: {}", user.id);
+        debug!("Updating user with token: {}", &user.token);
 
         // Check if user exists
-        let exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1) as exists")
-            .bind(user.id as i64)
+        let exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM users WHERE token = $1) as exists")
+            .bind(&user.token)
             .fetch_one(&self.pool)
             .await
             .map_err(|e| {
-                error!("Database error while checking if user {} exists: {}", user.id, e);
+                error!("Database error while checking if user {} exists: {}", &user.token, e);
                 Status::internal(format!("Database error: {}", e))
             })?
             .get::<bool, _>("exists");
 
         if !exists {
-            warn!("Update request for non-existent user ID: {}", user.id);
-            return Err(Status::not_found(format!("User with ID {} not found", user.id)));
+            warn!("Update request for non-existent user token: {}", &user.token);
+            return Err(Status::not_found(format!("User with token {} not found", &user.token)));
         }
 
         // Update only non-empty fields
@@ -158,31 +161,28 @@ impl db_service::database_service_server::DatabaseService for DatabaseService {
             r#"
             UPDATE users
             SET
-                token = COALESCE(NULLIF($1, ''), token),
-                language = COALESCE(NULLIF($2, ''), language),
-                llm_preference = COALESCE(NULLIF($3, ''), llm_preference),
-                description = COALESCE(NULLIF($4, ''), description),
-                num_requests = COALESCE($5, num_requests)
-            WHERE id = $6
-            RETURNING id, token, language, llm_preference, description, num_requests
+                language = COALESCE(NULLIF($1, ''), language),
+                llm_preference = COALESCE(NULLIF($2, ''), llm_preference),
+                description = COALESCE(NULLIF($3, ''), description),
+                num_requests = COALESCE($4, num_requests)
+            WHERE token = $5
+            RETURNING token, language, llm_preference, description, num_requests
             "#)
-            .bind(&user.token)
             .bind(&user.language)
             .bind(&user.llm_preference)
             .bind(&user.description)
             .bind(user.num_requests)
-            .bind(user.id as i64)
+            .bind(&user.token)
             .fetch_one(&self.pool)
             .await
             .map_err(|e| {
-                error!("Database error while updating user {}: {}", user.id, e);
+                error!("Database error while updating user {}: {}", &user.token, e);
                 Status::internal(format!("Failed to update user: {}", e))
             })?;
 
-        info!("User {} updated successfully", user.id);
+        info!("User {} updated successfully", &user.token);
         
         let updated_user = User {
-            id: row.get::<i64, _>("id") as u64,
             token: row.get("token"),
             language: row.get("language"),
             llm_preference: row.get("llm_preference"),
@@ -201,36 +201,35 @@ impl db_service::database_service_server::DatabaseService for DatabaseService {
         &self,
         request: Request<DeleteUserRequest>,
     ) -> Result<Response<DeleteUserResponse>, Status> {
-        let user_id = request.into_inner().user_id;
-        debug!("Received request to delete user with ID: {}", user_id);
+        let token = request.into_inner().token;
+        debug!("Received request to delete user with token: {}", token);
 
         let row = sqlx::query(
             r#"
             DELETE FROM users
-            WHERE id = $1
-            RETURNING id, token, language, llm_preference, description, num_requests
+            WHERE token = $1
+            RETURNING token, language, llm_preference, description, num_requests
             "#)
-            .bind(user_id as i64)
+            .bind(&token)
             .fetch_optional(&self.pool)
             .await
             .map_err(|e| {
-                error!("Database error while deleting user {}: {}", user_id, e);
+                error!("Database error while deleting user {}: {}", token, e);
                 Status::internal(format!("Database error: {}", e))
             })?;
 
         let row = match row {
             Some(row) => {
-                info!("User {} deleted successfully", user_id);
+                info!("User {} deleted successfully", token);
                 row
             },
             None => {
-                warn!("Delete request for non-existent user ID: {}", user_id);
-                return Err(Status::not_found(format!("User with ID {} not found", user_id)))
+                warn!("Delete request for non-existent user token: {}", token);
+                return Err(Status::not_found(format!("User with token {} not found", token)))
             }
         };
 
         let user = User {
-            id: row.get::<i64, _>("id") as u64,
             token: row.get("token"),
             language: row.get("language"),
             llm_preference: row.get("llm_preference"),
@@ -250,36 +249,36 @@ impl db_service::database_service_server::DatabaseService for DatabaseService {
         request: Request<UpdateUserRequestCountRequest>,
     ) -> Result<Response<UpdateUserRequestCountResponse>, Status> {
         let req = request.into_inner();
-        let user_id = req.user_id;
+        let token = req.token;
         let delta = req.delta as i32;
         
-        debug!("Received request to update request count for user {}: +{}", user_id, delta);
+        debug!("Received request to update request count for user {}: +{}", token, delta);
 
         let row = sqlx::query(
             r#"
             UPDATE users
             SET num_requests = num_requests + $1
-            WHERE id = $2
+            WHERE token = $2
             RETURNING num_requests
             "#)
             .bind(delta)
-            .bind(user_id as i64)
+            .bind(&token)
             .fetch_optional(&self.pool)
             .await
             .map_err(|e| {
-                error!("Database error while updating request count for user {}: {}", user_id, e);
+                error!("Database error while updating request count for user {}: {}", token, e);
                 Status::internal(format!("Database error: {}", e))
             })?;
 
         let row = match row {
             Some(row) => {
                 let new_count = row.get::<i32, _>("num_requests");
-                info!("User {} request count updated to {}", user_id, new_count);
+                info!("User {} request count updated to {}", token, new_count);
                 row
             },
             None => {
-                warn!("Request count update for non-existent user ID: {}", user_id);
-                return Err(Status::not_found(format!("User with ID {} not found", user_id)))
+                warn!("Request count update for non-existent user token: {}", token);
+                return Err(Status::not_found(format!("User with token {} not found", token)))
             }
         };
 

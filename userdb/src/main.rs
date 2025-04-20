@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use log::{info, error, debug};
+use log::{info, error};
 use sqlx::migrate::MigrateDatabase;
 use sqlx::{Postgres, PgPool};
 use tonic::transport::Server;
