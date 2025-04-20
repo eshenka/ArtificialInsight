@@ -1,0 +1,6 @@
+grpcio
+grpcio-tools
+requests
+beautifulsoup4
+lxml
+protobuf
