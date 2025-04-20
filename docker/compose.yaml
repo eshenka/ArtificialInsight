@@ -1,0 +1,252 @@
+# ArtificialInsight Docker Compose Configuration
+#
+# This file defines all services required to run the complete ArtificialInsight system.
+# Configuration can be done through environment variables or by editing this file directly.
+#
+# Usage:
+#   1. Configure environment variables in .env file (copy from .env.example)
+#   2. Start all services: docker-compose up -d
+#   3. Access Web UI at http://localhost:5173
+
+version: '3.8'
+
+services:
+  #############################################
+  # Frontend Services
+  #############################################
+  
+  # Web User Interface
+  webui:
+    build:
+      context: ..
+      dockerfile: docker/webui.Dockerfile
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "${WEBUI_PORT:-5173}:80"
+    depends_on:
+      - service-api
+    restart: unless-stopped
+    networks:
+      - frontend-network
+
+  # API Gateway Service
+  service-api:
+    build:
+      context: ..
+      dockerfile: docker/service-api.Dockerfile
+    environment:
+      - CONTROLLER_ADDR=controller:${CONTROLLER_PORT:-50050}
+      - GATEWAY_HTTP_PORT=${GATEWAY_HTTP_PORT:-8000}
+    ports:
+      - "${GATEWAY_EXPOSED_PORT:-8000}:${GATEWAY_HTTP_PORT:-8000}"
+    depends_on:
+      - controller
+    restart: unless-stopped
+    networks:
+      - frontend-network
+      - backend-network
+
+  #############################################
+  # Core Services
+  #############################################
+  
+  # Controller Service - Central orchestration component
+  controller:
+    build:
+      context: ..
+      dockerfile: docker/controller.Dockerfile
+    environment:
+      - CONTROLLER_PORT=${CONTROLLER_PORT:-50050}
+      - CONTROLLER_HOST=[::]
+      - USERDB_SERVICE=userdb:${USERDB_PORT:-2780}
+      - VECTORDB_SERVICE=vectordb:${VECTORDB_PORT:-50051}
+      - SCRAPING_SERVICE=scraping:${SCRAPING_PORT:-50051}
+      - LLM_SERVICE=llms:${LLM_PORT:-50052}
+      - MAX_WORKERS=${CONTROLLER_MAX_WORKERS:-10}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    depends_on:
+      - userdb
+      - vectordb
+      - scraping
+      - llms
+    networks:
+      - backend-network
+
+  # LLM Service - Manages LLM access
+  llms:
+    build:
+      context: ..
+      dockerfile: docker/llms.Dockerfile
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - USE_OLLAMA_FALLBACK=${USE_OLLAMA_FALLBACK:-true}
+      - LLM_KEY=${LLM_KEY:-}
+      - GRPC_PORT=${LLM_PORT:-50052}
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    networks:
+      - backend-network
+      - ollama-network
+
+  # Scraping Service - Web content extraction
+  scraping:
+    build:
+      context: ..
+      dockerfile: docker/scraping.Dockerfile
+    environment:
+      - SCRAPING_PORT=${SCRAPING_PORT:-50051}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - REQUEST_TIMEOUT=${SCRAPING_TIMEOUT:-30}
+      - MAX_WORKERS=${SCRAPING_MAX_WORKERS:-10}
+      - USER_AGENT=${SCRAPING_USER_AGENT:-ArtificialInsightScraper/1.0}
+    restart: unless-stopped
+    networks:
+      - backend-network
+
+  # Vector Database Service - Document storage and retrieval
+  vectordb:
+    build:
+      context: ..
+      dockerfile: docker/vectordb.Dockerfile
+    environment:
+      - MILVUS_HOST=milvus
+      - MILVUS_PORT=19530
+      - SERVICE_HOST=0.0.0.0
+      - SERVICE_PORT=${VECTORDB_PORT:-50051}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    depends_on:
+      - milvus
+    networks:
+      - backend-network
+      - milvus-network
+
+  # User Database Service - User management
+  userdb:
+    build:
+      context: ..
+      dockerfile: docker/userdb.Dockerfile
+    environment:
+      - USERDB_PG_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-aiusers}
+      - USERDB_ADDR=0.0.0.0
+      - USERDB_PORT=${USERDB_PORT:-2780}
+      - RUST_LOG=${LOG_LEVEL:-info}
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    networks:
+      - backend-network
+      - postgres-network
+
+  #############################################
+  # Backend Dependencies
+  #############################################
+  
+  # PostgreSQL - Database for user management
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-aiusers}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - postgres-network
+
+  # Ollama - Local LLM provider
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - ollama-network
+
+  # Milvus - Vector database for document retrieval
+  milvus:
+    image: milvusdb/milvus:v2.3.3
+    command: ["milvus", "run", "standalone"]
+    environment:
+      - ETCD_ENDPOINTS=localhost:2379
+      - DATA_PATH=/var/lib/milvus/data
+    volumes:
+      - milvus_data:/var/lib/milvus
+    restart: unless-stopped
+    networks:
+      - milvus-network
+
+#############################################
+# Networks
+#############################################
+networks:
+  frontend-network:
+    driver: bridge
+  backend-network:
+    driver: bridge
+  postgres-network:
+    driver: bridge
+  ollama-network:
+    driver: bridge
+  milvus-network:
+    driver: bridge
+
+#############################################
+# Volumes
+#############################################
+volumes:
+  postgres_data:
+    driver: local
+  ollama_data:
+    driver: local
+  milvus_data:
+    driver: local
+
+# Environment Variable Configuration:
+# ==================================
+#
+# Web UI Configuration:
+# - WEBUI_PORT: Port to expose the Web UI (default: 5173)
+# - VITE_API_BASE_URL: URL of the API Gateway (default: http://localhost:8000)
+#
+# API Gateway Configuration:
+# - GATEWAY_HTTP_PORT: Internal port for the gateway service (default: 8000)
+# - GATEWAY_EXPOSED_PORT: External port for the gateway service (default: 8000)
+#
+# Controller Configuration:
+# - CONTROLLER_PORT: Port for the controller service (default: 50050)
+# - CONTROLLER_MAX_WORKERS: Maximum worker threads (default: 10)
+#
+# LLM Service Configuration:
+# - LLM_PORT: Port for the LLM service (default: 50052)
+# - LLM_KEY: API key for external LLM provider (default: empty)
+# - USE_OLLAMA_FALLBACK: Whether to use Ollama as fallback (default: true)
+#
+# Scraping Service Configuration:
+# - SCRAPING_PORT: Port for the scraping service (default: 50051)
+# - SCRAPING_TIMEOUT: HTTP request timeout in seconds (default: 30)
+# - SCRAPING_MAX_WORKERS: Maximum worker threads (default: 10)
+# - SCRAPING_USER_AGENT: User agent for HTTP requests (default: ArtificialInsightScraper/1.0)
+#
+# Vector Database Configuration:
+# - VECTORDB_PORT: Port for the vector database service (default: 50051)
+#
+# User Database Configuration:
+# - USERDB_PORT: Port for the user database service (default: 2780)
+#
+# PostgreSQL Configuration:
+# - POSTGRES_PASSWORD: PostgreSQL password (default: password)
+# - POSTGRES_USER: PostgreSQL username (default: postgres)
+# - POSTGRES_DB: PostgreSQL database name (default: aiusers)
+#
+# General Configuration:
+# - LOG_LEVEL: Logging level for all services (default: INFO)

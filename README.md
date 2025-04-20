@@ -89,6 +89,41 @@ The fastest and simplest way to deploy ArtificialInsight is with Docker Compose:
 
 That's it! Your ArtificialInsight system is now ready to use.
 
+#### Docker Compose Configuration
+
+The Docker Compose deployment can be configured using environment variables in the `.env` file:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| **Web UI Configuration** |
+| `WEBUI_PORT` | Port to expose the Web UI | `5173` |
+| `VITE_API_BASE_URL` | URL of the API Gateway | `http://localhost:8000` |
+| **API Gateway Configuration** |
+| `GATEWAY_HTTP_PORT` | Internal port for the gateway service | `8000` |
+| `GATEWAY_EXPOSED_PORT` | External port for the gateway service | `8000` |
+| **Controller Configuration** |
+| `CONTROLLER_PORT` | Port for the controller service | `50050` |
+| `CONTROLLER_MAX_WORKERS` | Maximum worker threads | `10` |
+| **LLM Service Configuration** |
+| `LLM_PORT` | Port for the LLM service | `50052` |
+| `LLM_KEY` | API key for external LLM provider | ` ` (empty) |
+| `USE_OLLAMA_FALLBACK` | Whether to use Ollama as fallback | `true` |
+| **Scraping Service Configuration** |
+| `SCRAPING_PORT` | Port for the scraping service | `50051` |
+| `SCRAPING_TIMEOUT` | HTTP request timeout in seconds | `30` |
+| `SCRAPING_MAX_WORKERS` | Maximum worker threads | `10` |
+| `SCRAPING_USER_AGENT` | User agent for HTTP requests | `ArtificialInsightScraper/1.0` |
+| **Vector Database Configuration** |
+| `VECTORDB_PORT` | Port for the vector database service | `50051` |
+| **User Database Configuration** |
+| `USERDB_PORT` | Port for the user database service | `2780` |
+| **PostgreSQL Configuration** |
+| `POSTGRES_PASSWORD` | PostgreSQL password | `password` |
+| `POSTGRES_USER` | PostgreSQL username | `postgres` |
+| `POSTGRES_DB` | PostgreSQL database name | `aiusers` |
+| **General Configuration** |
+| `LOG_LEVEL` | Logging level for all services | `INFO` |
+
 #### Docker Compose Commands
 
 All docker-compose commands should be run from the `docker` directory:
