@@ -50,15 +50,6 @@ Processes user queries by:
   - `grpcio` - For gRPC communication
   - `protobuf` - For protocol buffer serialization
   - `uuid` - For token generation
-  - Logging libraries for observability
-
-## Error Handling
-
-The controller implements comprehensive error handling to ensure:
-- Invalid user tokens are properly rejected
-- Unavailable services are gracefully handled
-- Malformed requests are properly reported
-- All errors are logged with appropriate context
 
 ## Logging
 
@@ -66,7 +57,7 @@ All operations are logged for observability and debugging:
 - Request timestamps and durations
 - User tokens (anonymized where appropriate)
 - Operation outcomes (success/failure)
-- Integration with centralized logging service
+- Standard Python logging is used
 
 ## Configuration
 

@@ -16,9 +16,6 @@ from controller.rpc import scraping_pb2
 from controller.rpc import scraping_pb2_grpc
 from controller.rpc import llms_pb2
 from controller.rpc import llms_pb2_grpc
-from controller.rpc import logging_pb2
-from controller.rpc import logging_pb2_grpc
-from controller.rpc import common_pb2
 
 # Set up logging
 logging.basicConfig(
@@ -55,30 +52,14 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
         )
         self.llm_stub = llms_pb2_grpc.LLMServiceStub(self.llm_channel)
 
-        self.logging_channel = None
-        self.logging_stub = None
-        if self.config.get('LOGGING_SERVICE'):
-            self.logging_channel = grpc.insecure_channel(
-                self.config.get('LOGGING_SERVICE')
-            )
-            self.logging_stub = logging_pb2_grpc.LoggingServiceStub(self.logging_channel)
-
-    def log_event(self, message, level=logging_pb2.INFO):
-        """Log event using the logging service if available, otherwise use local logging."""
-        logger.info(message)
-        
-        if self.logging_stub:
-            try:
-                timestamp = datetime.now().timestamp()
-                event = logging_pb2.LogEvent(
-                    source='controller',
-                    message=message,
-                    timestamp=timestamp,
-                    level=level
-                )
-                self.logging_stub.LogEvent(logging_pb2.LogEventRequest(events=[event]))
-            except Exception as e:
-                logger.error(f"Failed to log to logging service: {e}")
+    def log_event(self, message, level=logging.INFO):
+        """Log event using local logging."""
+        if level == logging.ERROR:
+            logger.error(message)
+        elif level == logging.WARNING:
+            logger.warning(message)
+        else:
+            logger.info(message)
 
     def CreatePipeline(self, request, context):
         """
@@ -110,7 +91,7 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
                 self.log_event(f"Request {request_id}: User created with token: {token[:5]}...")
             except grpc.RpcError as e:
                 error_msg = f"Failed to create user: {e.details() if hasattr(e, 'details') else str(e)}"
-                self.log_event(error_msg, logging_pb2.ERROR)
+                self.log_event(error_msg, logging.ERROR)
                 context.set_code(grpc.StatusCode.INTERNAL)
                 context.set_details(error_msg)
                 return controller_pb2.CreatePipelineResponse()
@@ -128,7 +109,7 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
                 self.log_event(f"Request {request_id}: Scraping completed, {len(documents)} documents retrieved")
             except grpc.RpcError as e:
                 error_msg = f"Failed to scrape documents: {e.details() if hasattr(e, 'details') else str(e)}"
-                self.log_event(error_msg, logging_pb2.ERROR)
+                self.log_event(error_msg, logging.ERROR)
                 context.set_code(grpc.StatusCode.INTERNAL)
                 context.set_details(error_msg)
                 return controller_pb2.CreatePipelineResponse()
@@ -144,7 +125,7 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
                 
                 if not models_response.models:
                     error_msg = f"No embedding models available for language: {request.language}"
-                    self.log_event(error_msg, logging_pb2.ERROR)
+                    self.log_event(error_msg, logging.ERROR)
                     context.set_code(grpc.StatusCode.NOT_FOUND)
                     context.set_details(error_msg)
                     return controller_pb2.CreatePipelineResponse()
@@ -152,7 +133,7 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
                 embedding_model = models_response.models[0].name
             except grpc.RpcError as e:
                 error_msg = f"Failed to get embedding models: {e.details() if hasattr(e, 'details') else str(e)}"
-                self.log_event(error_msg, logging_pb2.ERROR)
+                self.log_event(error_msg, logging.ERROR)
                 context.set_code(grpc.StatusCode.INTERNAL)
                 context.set_details(error_msg)
                 return controller_pb2.CreatePipelineResponse()
@@ -170,7 +151,7 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
                 self.log_event(f"Request {request_id}: Collection created successfully")
             except grpc.RpcError as e:
                 error_msg = f"Failed to create collection: {e.details() if hasattr(e, 'details') else str(e)}"
-                self.log_event(error_msg, logging_pb2.ERROR)
+                self.log_event(error_msg, logging.ERROR)
                 context.set_code(grpc.StatusCode.INTERNAL)
                 context.set_details(error_msg)
                 return controller_pb2.CreatePipelineResponse()
@@ -182,7 +163,7 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
             
         except Exception as e:
             error_msg = f"Unexpected error in CreatePipeline: {str(e)}"
-            self.log_event(error_msg, logging_pb2.ERROR)
+            self.log_event(error_msg, logging.ERROR)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(error_msg)
             return controller_pb2.CreatePipelineResponse()
@@ -212,13 +193,13 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
             except grpc.RpcError as e:
                 if e.code() == grpc.StatusCode.NOT_FOUND:
                     error_msg = f"Invalid token: {token_prefix}..."
-                    self.log_event(error_msg, logging_pb2.WARNING)
+                    self.log_event(error_msg, logging.WARNING)
                     context.set_code(grpc.StatusCode.UNAUTHENTICATED)
                     context.set_details("Invalid token")
                     return controller_pb2.AnswerPromptResponse()
                 else:
                     error_msg = f"Failed to validate user: {e.details() if hasattr(e, 'details') else str(e)}"
-                    self.log_event(error_msg, logging_pb2.ERROR)
+                    self.log_event(error_msg, logging.ERROR)
                     context.set_code(grpc.StatusCode.INTERNAL)
                     context.set_details(error_msg)
                     return controller_pb2.AnswerPromptResponse()
@@ -231,7 +212,7 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
             except grpc.RpcError as e:
                 # Non-critical error, log but continue
                 error_msg = f"Failed to update request count: {e.details() if hasattr(e, 'details') else str(e)}"
-                self.log_event(error_msg, logging_pb2.WARNING)
+                self.log_event(error_msg, logging.WARNING)
 
             # Step 3: Search for relevant documents
             collection_name = request.token  # Using token as collection name
@@ -248,7 +229,7 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
                 self.log_event(f"Request {request_id}: Found {len(relevant_documents)} relevant documents")
             except grpc.RpcError as e:
                 error_msg = f"Failed to search documents: {e.details() if hasattr(e, 'details') else str(e)}"
-                self.log_event(error_msg, logging_pb2.ERROR)
+                self.log_event(error_msg, logging.ERROR)
                 context.set_code(grpc.StatusCode.INTERNAL)
                 context.set_details(error_msg)
                 return controller_pb2.AnswerPromptResponse()
@@ -261,7 +242,7 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
                 
                 if not models_response.models:
                     error_msg = f"No LLM models available for language: {user.language}"
-                    self.log_event(error_msg, logging_pb2.ERROR)
+                    self.log_event(error_msg, logging.ERROR)
                     context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
                     context.set_details(error_msg)
                     return controller_pb2.AnswerPromptResponse()
@@ -270,7 +251,7 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
                 model_name = user.llm_preference if user.llm_preference else models_response.models[0].name
             except grpc.RpcError as e:
                 error_msg = f"Failed to get LLM models: {e.details() if hasattr(e, 'details') else str(e)}"
-                self.log_event(error_msg, logging_pb2.ERROR)
+                self.log_event(error_msg, logging.ERROR)
                 context.set_code(grpc.StatusCode.INTERNAL)
                 context.set_details(error_msg)
                 return controller_pb2.AnswerPromptResponse()
@@ -296,7 +277,7 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
                 self.log_event(f"Request {request_id}: Answer generated successfully")
             except grpc.RpcError as e:
                 error_msg = f"Failed to generate answer: {e.details() if hasattr(e, 'details') else str(e)}"
-                self.log_event(error_msg, logging_pb2.ERROR)
+                self.log_event(error_msg, logging.ERROR)
                 context.set_code(grpc.StatusCode.INTERNAL)
                 context.set_details(error_msg)
                 return controller_pb2.AnswerPromptResponse()
@@ -308,7 +289,7 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
             
         except Exception as e:
             error_msg = f"Unexpected error in AnswerPrompt: {str(e)}"
-            self.log_event(error_msg, logging_pb2.ERROR)
+            self.log_event(error_msg, logging.ERROR)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(error_msg)
             return controller_pb2.AnswerPromptResponse()

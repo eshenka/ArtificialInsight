@@ -26,7 +26,6 @@ def load_config():
         'VECTORDB_SERVICE': os.environ.get('VECTORDB_SERVICE', 'localhost:50052'),
         'SCRAPING_SERVICE': os.environ.get('SCRAPING_SERVICE', 'localhost:50053'),
         'LLM_SERVICE': os.environ.get('LLM_SERVICE', 'localhost:50054'),
-        'LOGGING_SERVICE': os.environ.get('LOGGING_SERVICE', ''),
         'MAX_WORKERS': int(os.environ.get('MAX_WORKERS', '10')),
     }
     
