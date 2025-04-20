@@ -30,7 +30,7 @@ function App() {
           <div className={`lg:w-1/2 ${!token ? 'lg:hidden' : ''}`}>
             <ChatPanel 
               initialToken={token} 
-              onTokenChange={(newToken) => {
+              onTokenChange={(newToken: string) => {
                 localStorage.setItem('ragToken', newToken);
                 setToken(newToken);
               }} 

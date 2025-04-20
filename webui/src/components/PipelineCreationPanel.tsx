@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
-import { createPipeline } from '../api/api';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { createPipeline, ScrapeRules } from '../api/api';
 
 interface PipelineCreationPanelProps {
   onPipelineCreated: (token: string) => void;
@@ -51,27 +51,27 @@ const PipelineCreationPanel: React.FC<PipelineCreationPanelProps> = ({ onPipelin
     
     try {
       // Transform the form data into the format expected by the API
-      const rulesJson = {
+      const rules: ScrapeRules = {
         max_depth: data.max_depth,
         max_pages: data.max_pages,
         scrape_patterns: data.scrape_patterns.map(pattern => ({
           url: { pattern: pattern.url_pattern },
-          css_selector: pattern.css_selector || null
+          css_selector: pattern.css_selector || undefined
         })),
         forbidden_urls: data.forbidden_urls.map(url => ({ pattern: url.pattern }))
       };
       
-      const formData = new FormData();
-      formData.append('user_name', data.user_name);
-      formData.append('description', data.description);
-      formData.append('language', data.language);
-      formData.append('entry_docs_url', data.entry_docs_url);
-      formData.append('rules', JSON.stringify(rulesJson));
+      const response = await createPipeline(
+        data.user_name,
+        data.description,
+        data.language,
+        data.entry_docs_url,
+        rules
+      );
       
-      const response = await createPipeline(formData);
       onPipelineCreated(response.token);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Failed to create pipeline');
+      setError(err?.message || 'Failed to create pipeline');
       console.error('Pipeline creation failed:', err);
     } finally {
       setIsLoading(false);
