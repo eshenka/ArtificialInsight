@@ -3,22 +3,22 @@ syntax = "proto3";
 package userdb;
 
 service DatabaseService {
-    // Get user by ID
+    // Get user by token
     rpc GetUser (GetUserRequest) returns (GetUserResponse) {}
 
     // Create a new user
-    // Returns the ID of the created user
-    // The user ID in the request is ignored
+    // Returns the token of the created user
+    // The user token in the request is ignored
     // The token in the request is ignored
     rpc CreateUser (CreateUserRequest) returns (CreateUserResponse) {}
 
     // Update an existing user
-    // The user ID in the request is required and must exist in the database
+    // The user token in the request is required and must exist in the database
     // Only non-null fields in the request will be updated
     rpc UpdateUser (UpdateUserRequest) returns (UpdateUserResponse) {}
 
-    // Delete a user by ID
-    // The user ID in the request is required and must exist in the database
+    // Delete a user by token
+    // The user token in the request is required and must exist in the database
     rpc DeleteUser (DeleteUserRequest) returns (DeleteUserResponse) {}
 
     // Add to the number of requests made by the user
@@ -26,7 +26,7 @@ service DatabaseService {
 }
 
 message GetUserRequest {
-    uint64 user_id = 1;
+    string token = 1;
 }
 
 message GetUserResponse {
@@ -34,7 +34,7 @@ message GetUserResponse {
 }
 
 message DeleteUserRequest {
-    uint64 user_id = 1;
+    string token = 1;
 }
 
 message DeleteUserResponse {
@@ -46,7 +46,7 @@ message CreateUserRequest {
 }
 
 message CreateUserResponse {
-    uint64 user_id = 1;
+    string token = 1;
 }
 
 message UpdateUserRequest {
@@ -58,7 +58,7 @@ message UpdateUserResponse {
 }
 
 message UpdateUserRequestCountRequest {
-    uint64 user_id = 1;
+    string token = 1;
 
     // How many requests to add to the user
     uint32 delta = 2;
@@ -70,7 +70,6 @@ message UpdateUserRequestCountResponse {
 }
 
 message User {
-    uint64 id = 1;
     string token = 2;
     string language = 3;
     string llm_preference = 4;
