@@ -8,8 +8,6 @@
 #   2. Start all services: docker-compose up -d
 #   3. Access Web UI at http://localhost:5173
 
-version: '3.8'
-
 services:
   #############################################
   # Frontend Services
