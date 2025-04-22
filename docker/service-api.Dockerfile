@@ -33,8 +33,8 @@ USER appuser
 # Expose the HTTP port
 EXPOSE ${GATEWAY_HTTP_PORT}
 
-# Command to run the application
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "${GATEWAY_HTTP_PORT}"]
+# Modified CMD to use shell form for environment variable substitution
+CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port $GATEWAY_HTTP_PORT"]
 
 # ===================================================================================
 # Configuration Instructions
