@@ -29,7 +29,7 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
     def __init__(self, milvus_host="localhost", milvus_port=19530, ollama_host=None):
         """Initialize the service with connection to Milvus."""
         self.embedding_models = {
-            "en": ["sentence-transformers/all-MiniLM-L6-v2", "OpenAI/text-embedding-ada-002"],
+            "en": ["sentence-transformers/all-MiniLM-L6-v2"],
             "ru": ["sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"]
         }
         
