@@ -3,7 +3,7 @@
 # This Dockerfile builds a container for the ArtificialInsight React web UI
 
 # Build stage
-FROM node:18-alpine AS build
+FROM node:18 AS build
 
 # Set working directory
 WORKDIR /app
