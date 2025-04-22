@@ -29,9 +29,11 @@ class LLMService(llms_pb2_grpc.LLMServiceServicer):
         self.ollama_host = ollama_host
         self.use_ollama_fallback = os.environ.get("USE_OLLAMA_FALLBACK", "true").lower() == "true"
         
-        # Configure Ollama client
+        # Configure Ollama client - update with the proper client configuration
         if self.use_ollama_fallback:
-            ollama.set_host(ollama_host)
+            # The Ollama client now uses the OLLAMA_HOST environment variable
+            # Set it for the client to use
+            os.environ["OLLAMA_HOST"] = self.ollama_host
         
         self.models = {
             "model_name": {
@@ -115,9 +117,13 @@ class LLMService(llms_pb2_grpc.LLMServiceServicer):
                 name = model.get("name")
                 if name:
                     try:
-                        # Get model info
+                        # Get model info using the current Ollama API
                         model_info = ollama.show(name)
-                        context_size = model_info.get("parameters", {}).get("context_length", 4096)
+                        # Check if the parameters structure has changed
+                        if "parameters" in model_info:
+                            context_size = model_info.get("parameters", {}).get("context_length", 4096)
+                        else:
+                            context_size = model_info.get("context_length", 4096)
                         models[name] = {
                             "context_length": context_size
                         }
