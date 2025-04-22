@@ -22,8 +22,6 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
-import common_pb2 as common__pb2
-
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nllms.proto\x12\x04llms\x1a\x0c\x63ommon.proto\"]\n\x15GenerateAnswerRequest\x12\x12\n\nmodel_name\x18\x01 \x01(\t\x12\x10\n\x08question\x18\x02 \x01(\t\x12\x1e\n\x07\x63ontext\x18\x03 \x01(\x0b\x32\r.llms.Context\"(\n\x16GenerateAnswerResponse\x12\x0e\n\x06\x61nswer\x18\x01 \x01(\t\"-\n\x19GetAvailableModelsRequest\x12\x10\n\x08language\x18\x01 \x01(\t\"9\n\x1aGetAvailableModelsResponse\x12\x1b\n\x06models\x18\x01 \x03(\x0b\x32\x0b.llms.Model\"9\n\x05Model\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08provider\x18\x02 \x01(\t\x12\x10\n\x08language\x18\x03 \x01(\t\"<\n\x07\x43ontext\x12\x0c\n\x04info\x18\x01 \x01(\t\x12#\n\tdocuments\x18\x02 \x03(\x0b\x32\x10.common.Document2\xb2\x01\n\nLLMService\x12K\n\x0eGenerateAnswer\x12\x1b.llms.GenerateAnswerRequest\x1a\x1c.llms.GenerateAnswerResponse\x12W\n\x12GetAvailableModels\x12\x1f.llms.GetAvailableModelsRequest\x1a .llms.GetAvailableModelsResponseb\x06proto3')
 
