@@ -117,12 +117,16 @@ services:
       - SERVICE_HOST=0.0.0.0
       - SERVICE_PORT=${VECTORDB_PORT:-50051}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - OLLAMA_HOST=${VECTORDB_OLLAMA_HOST:-http://ollama:11434}
+      - OLLAMA_MODELS=${VECTORDB_OLLAMA_MODELS:-'{"en": ["nomic-embed-text"]}'}
     restart: unless-stopped
     depends_on:
       - milvus
+      - ollama
     networks:
       - backend-network
       - milvus-network
+      - ollama-network
 
   # User Database Service - User management
   userdb:
@@ -239,6 +243,8 @@ volumes:
 #
 # Vector Database Configuration:
 # - VECTORDB_PORT: Port for the vector database service (default: 50051)
+# - VECTORDB_OLLAMA_HOST: URL for Ollama API (default: http://ollama:11434)
+# - VECTORDB_OLLAMA_MODELS: JSON string with language->models mapping (default: '{"en": ["nomic-embed-text"]}')
 #
 # User Database Configuration:
 # - USERDB_PORT: Port for the user database service (default: 2780)

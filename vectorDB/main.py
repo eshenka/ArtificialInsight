@@ -18,18 +18,42 @@ logger = logging.getLogger(__name__)
 
 import re
 import textwrap
+import json
+import requests
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
 
 class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
-    def __init__(self, milvus_host="localhost", milvus_port=19530):
+    def __init__(self, milvus_host="localhost", milvus_port=19530, ollama_host=None):
         """Initialize the service with connection to Milvus."""
         self.embedding_models = {
             "en": ["sentence-transformers/all-MiniLM-L6-v2", "OpenAI/text-embedding-ada-002"],
             "ru": ["sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"]
         }
+        
+        # Initialize Ollama support
+        self.ollama_host = ollama_host
+        self.ollama_models = {}
+        
+        # Parse OLLAMA_MODELS environment variable if set
+        ollama_models_env = os.environ.get("OLLAMA_MODELS", "")
+        if ollama_models_env:
+            try:
+                model_specs = json.loads(ollama_models_env)
+                for lang, models in model_specs.items():
+                    if lang not in self.embedding_models:
+                        self.embedding_models[lang] = []
+                    for model in models:
+                        model_name = f"ollama/{model}"
+                        if model_name not in self.embedding_models[lang]:
+                            self.embedding_models[lang].append(model_name)
+                            self.ollama_models[model] = {"name": model, "dimensions": None}
+                logger.info(f"Added Ollama embedding models: {self.ollama_models}")
+            except json.JSONDecodeError:
+                logger.error(f"Failed to parse OLLAMA_MODELS environment variable: {ollama_models_env}")
+        
         self.loaded_models = {}
         self.milvus_host = milvus_host
         self.milvus_port = milvus_port
@@ -40,9 +64,101 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
         except Exception as e:
             logger.error(f"Failed to connect to Milvus: {e}")
             raise
+            
+        # Download Ollama models if specified
+        if self.ollama_host and self.ollama_models:
+            self._download_ollama_models()
+    
+    def _download_ollama_models(self):
+        """Download and prepare Ollama models for embeddings."""
+        if not self.ollama_host:
+            logger.warning("Ollama host not specified, skipping model downloads")
+            return
+            
+        for model_name, model_info in self.ollama_models.items():
+            try:
+                # Pull the model if not already available
+                logger.info(f"Ensuring Ollama model {model_name} is available...")
+                response = requests.post(
+                    f"{self.ollama_host}/api/pull",
+                    json={"name": model_name}
+                )
+                
+                if response.status_code == 200:
+                    logger.info(f"Successfully pulled Ollama model: {model_name}")
+                else:
+                    logger.error(f"Failed to pull Ollama model {model_name}: {response.text}")
+                    continue
+                
+                # Get model info to determine embedding dimensions
+                response = requests.post(
+                    f"{self.ollama_host}/api/embeddings",
+                    json={"model": model_name, "prompt": "Test embedding dimension"}
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if "embedding" in data:
+                        dimensions = len(data["embedding"])
+                        self.ollama_models[model_name]["dimensions"] = dimensions
+                        logger.info(f"Ollama model {model_name} has {dimensions} dimensions")
+                    else:
+                        logger.error(f"Failed to get embedding dimensions for {model_name}")
+                else:
+                    logger.error(f"Failed to test Ollama model {model_name}: {response.text}")
+            
+            except Exception as e:
+                logger.error(f"Error preparing Ollama model {model_name}: {e}")
     
     def _get_model(self, model_name: str):
         """Get or load embedding model."""
+        if model_name.startswith("ollama/"):
+            # For Ollama models, we don't need to load anything, just check if it's ready
+            ollama_model = model_name.replace("ollama/", "")
+            if ollama_model in self.ollama_models and self.ollama_models[ollama_model]["dimensions"] is not None:
+                # Return a dummy model object with the get_sentence_embedding_dimension method
+                class OllamaModel:
+                    def __init__(self, dimensions, model_name):
+                        self.dimensions = dimensions
+                        self.model_name = model_name
+                        
+                    def get_sentence_embedding_dimension(self):
+                        return self.dimensions
+                        
+                    def encode(self, texts):
+                        embeddings = []
+                        for text in texts:
+                            try:
+                                response = requests.post(
+                                    f"{self.ollama_host}/api/embeddings",
+                                    json={"model": self.model_name.replace("ollama/", ""), "prompt": text}
+                                )
+                                
+                                if response.status_code == 200:
+                                    data = response.json()
+                                    if "embedding" in data:
+                                        embeddings.append(data["embedding"])
+                                    else:
+                                        logger.error(f"No embedding in Ollama response for model {self.model_name}")
+                                        # Return a zero vector as fallback
+                                        embeddings.append([0.0] * self.dimensions)
+                                else:
+                                    logger.error(f"Failed to get embedding from Ollama for model {self.model_name}: {response.text}")
+                                    # Return a zero vector as fallback
+                                    embeddings.append([0.0] * self.dimensions)
+                            except Exception as e:
+                                logger.error(f"Error getting embedding from Ollama for model {self.model_name}: {e}")
+                                # Return a zero vector as fallback
+                                embeddings.append([0.0] * self.dimensions)
+                        
+                        return np.array(embeddings)
+                
+                return OllamaModel(self.ollama_models[ollama_model]["dimensions"], model_name)
+            else:
+                logger.error(f"Ollama model {ollama_model} not available or dimensions unknown")
+                raise ValueError(f"Ollama model {ollama_model} not available")
+        
+        # For regular Sentence Transformer models
         if model_name not in self.loaded_models:
             try:
                 self.loaded_models[model_name] = SentenceTransformer(model_name)

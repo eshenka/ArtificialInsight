@@ -11,6 +11,7 @@ The Vector Database Service enables efficient storage and retrieval of document 
 - **Document Management**: Create collections and add documents with automatic chunking
 - **Semantic Search**: Find semantically similar documents based on vector embeddings
 - **Multiple Embedding Models**: Support for various embedding models across different languages
+- **Ollama Integration**: Use Ollama models for generating embeddings
 - **Collection Management**: Create, delete, and get information about collections
 - **Automatic Chunking**: Documents are automatically split into manageable chunks for optimal retrieval
 
@@ -18,7 +19,9 @@ The Vector Database Service enables efficient storage and retrieval of document 
 
 - **Backend**: Python
 - **Vector Database**: [Milvus](https://milvus.io/)
-- **Embedding Models**: [SentenceTransformers](https://www.sbert.net/) for text embedding generation
+- **Embedding Models**: 
+  - [SentenceTransformers](https://www.sbert.net/) for text embedding generation
+  - [Ollama](https://ollama.ai/) for local embedding model deployment
 - **API**: gRPC for high-performance client-server communication
 - **Protocol Buffers**: For data serialization and API definitions
 
@@ -28,6 +31,7 @@ The Vector Database Service enables efficient storage and retrieval of document 
 - Milvus 2.0+ running as a service
 - gRPC tools
 - SentenceTransformers library
+- Ollama (optional, for local embedding models)
 
 ## Installation
 
@@ -47,7 +51,7 @@ pip install -r requirements.txt
 Or install the required packages manually:
 
 ```bash
-pip install grpcio grpcio-tools pymilvus sentence-transformers numpy
+pip install grpcio grpcio-tools pymilvus sentence-transformers numpy requests
 ```
 
 ### 3. Set up Milvus
@@ -58,6 +62,14 @@ You can run Milvus using Docker:
 docker run -d --name milvus-standalone -p 19530:19530 -p 19121:19121 milvusdb/milvus:latest standalone
 ```
 
+### 4. Set up Ollama (Optional)
+
+If you want to use Ollama for embeddings:
+
+```bash
+docker run -d --name ollama -p 11434:11434 ollama/ollama:latest
+```
+
 ## Configuration
 
 The Vector Database Service can be configured through environment variables or command-line arguments:
@@ -66,6 +78,16 @@ The Vector Database Service can be configured through environment variables or c
 - `MILVUS_PORT` (default: 19530): Milvus server port
 - `GRPC_HOST` (default: "0.0.0.0"): Host to bind the gRPC server
 - `GRPC_PORT` (default: 50051): Port to bind the gRPC server
+- `OLLAMA_HOST`: URL of Ollama API server (e.g., "http://localhost:11434")
+- `OLLAMA_MODELS`: JSON string specifying which Ollama models to use for embeddings by language
+
+Example OLLAMA_MODELS configuration:
+```json
+{
+  "en": ["nomic-embed-text"],
+  "ru": ["multilingual-embedding-model"]
+}
+```
 
 ## Running the Service
 
@@ -79,6 +101,12 @@ You can specify custom host and port:
 
 ```bash
 python main.py --host 0.0.0.0 --port 50051
+```
+
+With Ollama integration:
+
+```bash
+OLLAMA_HOST="http://localhost:11434" OLLAMA_MODELS='{"en":["nomic-embed-text"]}' python main.py
 ```
 
 ## API Reference
@@ -149,7 +177,7 @@ stub = vectordb_pb2_grpc.VectorDatabaseServiceStub(channel)
 # Create a collection
 create_request = vectordb_pb2.CreateCollectionRequest(
     collection_name="my_company",
-    embedding_model="sentence-transformers/all-MiniLM-L6-v2",
+    embedding_model="sentence-transformers/all-MiniLM-L6-v2",  # Or "ollama/nomic-embed-text" for Ollama
     documents=[
         vectordb_pb2.Document(
             source="document1.txt",
@@ -186,6 +214,22 @@ For each company or client, the service creates:
    - `content`: Document text content
    - `embedding`: Vector embedding of the content
 
+## Embedding Models
+
+The service supports multiple types of embedding models:
+
+1. **SentenceTransformers Models** (default):
+   - `sentence-transformers/all-MiniLM-L6-v2` (English)
+   - `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (Russian)
+
+2. **Ollama Models** (when configured):
+   - Use `ollama/model-name` format to specify an Ollama model
+   - Example: `ollama/nomic-embed-text` for English embeddings
+   - Models configured in `OLLAMA_MODELS` will be automatically downloaded
+
+3. **OpenAI Models**:
+   - `OpenAI/text-embedding-ada-002` (requires API key)
+
 ## Performance Considerations
 
 - The chunking mechanism splits large documents into smaller pieces for better retrieval
@@ -199,6 +243,7 @@ Common issues:
 1. **Connection refused to Milvus**: Ensure Milvus is running and accessible
 2. **Memory issues with large models**: Consider using smaller embedding models or increasing server memory
 3. **Slow search performance**: Adjust index parameters or increase the number of server workers
+4. **Ollama models not loading**: Check OLLAMA_HOST is correct and accessible, and that models are specified correctly
 
 ## Contributing
 
