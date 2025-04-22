@@ -81,7 +81,7 @@ class LLMService(llms_pb2_grpc.LLMServiceServicer):
         """Ensure that all required Ollama models are available."""
         try:
             # Get list of available models
-            available_models = {model['name'] for model in ollama.list()['models']}
+            available_models = {model.model for model in ollama.list()['models']}
             
             # Check which required models are missing
             missing_models = [model for model in self.required_ollama_models if model not in available_models]
@@ -113,8 +113,8 @@ class LLMService(llms_pb2_grpc.LLMServiceServicer):
             # Use the Ollama Python library to list models
             ollama_models = ollama.list()
             
-            for model in ollama_models.get("models", []):
-                name = model.get("name")
+            for model in ollama_models['models']:
+                name = model.model
                 if name:
                     try:
                         # Get model info using the current Ollama API
