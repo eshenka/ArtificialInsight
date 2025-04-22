@@ -334,10 +334,6 @@ class LLMService(llms_pb2_grpc.LLMServiceServicer):
             
             if self.use_ollama_fallback:
                 for ollama_model in self.ollama_models.keys():
-                    # Skip embedding models
-                    if 'embed' in ollama_model.lower():
-                        continue
-                        
                     if language and language != "en":
                         continue
                     
