@@ -180,7 +180,7 @@ services:
 
   # Milvus - Vector database for document retrieval
   milvus:
-    image: milvusdb/milvus:v2.3.3
+    image: milvusdb/milvus:v2.5.10
     command: ["milvus", "run", "standalone"]
     environment:
       - ETCD_ENDPOINTS=localhost:2379
