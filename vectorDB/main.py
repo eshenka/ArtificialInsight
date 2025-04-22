@@ -235,6 +235,10 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
             logger.error(f"Error ensuring database exists: {e}")
             return False
 
+    def _sanitize_identifier(self, identifier: str) -> str:
+        """Convert dashes to underscores in identifiers to ensure compatibility with Milvus."""
+        return identifier.replace('-', '_')
+
     def _create_collection_in_db(self, collection_name: str, embedding_model: str, database_name: str):
         """Create a collection in the specified database."""
         self._ensure_database_exists(database_name)
@@ -270,7 +274,8 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
         embedding_model = request.embedding_model
         documents = request.documents
         
-        database_name = f"company_{company_id}"
+        sanitized_company_id = self._sanitize_identifier(company_id)
+        database_name = f"company_{sanitized_company_id}"
         collection_name = "documents"
         
         try:
@@ -314,7 +319,8 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
         company_id = request.collection_name
         documents = request.documents
         
-        database_name = f"company_{company_id}"
+        sanitized_company_id = self._sanitize_identifier(company_id)
+        database_name = f"company_{sanitized_company_id}"
         collection_name = "documents"
         
         try:
@@ -365,7 +371,8 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
         query = request.query
         limit = request.limit if request.limit > 0 else 10
         
-        database_name = f"company_{company_id}"
+        sanitized_company_id = self._sanitize_identifier(company_id)
+        database_name = f"company_{sanitized_company_id}"
         collection_name = "documents"
         
         try:
@@ -419,7 +426,8 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
     def DeleteCollection(self, request, context):
         """Implementation of DeleteCollection RPC."""
         company_id = request.collection_name
-        database_name = f"company_{company_id}"
+        sanitized_company_id = self._sanitize_identifier(company_id)
+        database_name = f"company_{sanitized_company_id}"
         
         try:
             all_dbs = db.list_database()
@@ -437,7 +445,8 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
     def GetCollectionInfo(self, request, context):
         """Implementation of GetCollectionInfo RPC."""
         company_id = request.collection_name
-        database_name = f"company_{company_id}"
+        sanitized_company_id = self._sanitize_identifier(company_id)
+        database_name = f"company_{sanitized_company_id}"
         collection_name = "documents"
         
         try:
