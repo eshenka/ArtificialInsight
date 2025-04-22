@@ -80,7 +80,7 @@ services:
     environment:
       - OLLAMA_HOST=http://ollama:11434
       - USE_OLLAMA_FALLBACK=${USE_OLLAMA_FALLBACK:-true}
-      - REQUIRED_OLLAMA_MODELS=${REQUIRED_OLLAMA_MODELS:-llama2:latest,mistral:latest}
+      - REQUIRED_OLLAMA_MODELS=${REQUIRED_OLLAMA_MODELS:-gemma3:1b}
       - AUTO_PULL_OLLAMA_MODELS=${AUTO_PULL_OLLAMA_MODELS:-true}
       - LLM_KEY=${LLM_KEY:-}
       - GRPC_PORT=${LLM_PORT:-50052}
