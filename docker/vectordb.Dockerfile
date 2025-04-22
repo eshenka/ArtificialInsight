@@ -15,6 +15,9 @@ RUN apt-get update && \
 COPY vectorDB/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Fix marshmallow/environs compatibility issue
+RUN pip install --no-cache-dir marshmallow==3.12.2 environs==9.5.0
+
 # Install specific dependencies
 RUN pip install --no-cache-dir pymilvus sentence-transformers grpcio grpcio-tools requests
 
@@ -73,7 +76,9 @@ RUN if [ ! -f /app/vectorDB/requirements.txt ]; then \
     echo "grpcio>=1.71.0" >> /app/vectorDB/requirements.txt && \
     echo "grpcio-tools>=1.71.0" >> /app/vectorDB/requirements.txt && \
     echo "requests>=2.28.0" >> /app/vectorDB/requirements.txt && \
-    echo "numpy>=1.24.0" >> /app/vectorDB/requirements.txt; \
+    echo "numpy>=1.24.0" >> /app/vectorDB/requirements.txt && \
+    echo "marshmallow==3.12.2" >> /app/vectorDB/requirements.txt && \
+    echo "environs==9.5.0" >> /app/vectorDB/requirements.txt; \
     fi
 
 # Expose the gRPC port
