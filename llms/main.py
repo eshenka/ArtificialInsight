@@ -300,6 +300,8 @@ class LLMService(llms_pb2_grpc.LLMServiceServicer):
                     context.abort(StatusCode.UNAVAILABLE, f"API key for {provider} not configured")
             
             prompt = self._create_prompt(question, user_context)
+
+            logger.info(f"Generating response for prompt: {prompt}")
             
             answer, used_fallback = self._try_with_fallback(model_name, prompt)
             
