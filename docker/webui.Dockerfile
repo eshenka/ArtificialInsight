@@ -21,6 +21,13 @@ COPY webui/ ./
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000}
 
+# Fix for platform-specific dependencies
+# Clean npm cache and node_modules to ensure we get the right binaries for the container platform
+RUN rm -rf node_modules/.cache
+RUN npm cache clean --force
+RUN npm ci --prefer-offline
+
+# Now build the application
 RUN npm run build
 
 # Production stage
