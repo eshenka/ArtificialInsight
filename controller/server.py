@@ -4,6 +4,7 @@ import logging
 import concurrent.futures
 import signal
 import time
+import threading
 from contextlib import contextmanager
 
 from controller.rpc import controller_pb2_grpc
@@ -36,7 +37,7 @@ def load_config():
 @contextmanager
 def graceful_exit(server):
     """Context manager for graceful server shutdown."""
-    stop_event = concurrent.futures.Event()
+    stop_event = threading.Event()
     
     def handle_signal(signum, frame):
         logger.info(f"Received signal {signum}, initiating graceful shutdown")
