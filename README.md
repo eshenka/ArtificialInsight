@@ -266,7 +266,7 @@ Each service can be configured through environment variables or command-line arg
 | VectorDB   | `MILVUS_HOST`  | Milvus server host                        | `localhost`       |
 | VectorDB   | `MILVUS_PORT`  | Milvus server port                        | `19530`           |
 | VectorDB   | `OLLAMA_HOST`  | URL for Ollama API (for embeddings)       | Empty             |
-| VectorDB   | `OLLAMA_MODELS`| JSON string with language->models mapping | Empty             |
+| VectorDB   | `OLLAMA_MODELS`| Comma-separated list of Ollama models     | Empty             |
 | Gateway    | `CONTROLLER_HOST` | Host for controller service            | `localhost`       |
 | Gateway    | `CONTROLLER_PORT` | Port for controller service            | `50050`           |
 

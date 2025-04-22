@@ -79,14 +79,11 @@ The Vector Database Service can be configured through environment variables or c
 - `GRPC_HOST` (default: "0.0.0.0"): Host to bind the gRPC server
 - `GRPC_PORT` (default: 50051): Port to bind the gRPC server
 - `OLLAMA_HOST`: URL of Ollama API server (e.g., "http://localhost:11434")
-- `OLLAMA_MODELS`: JSON string specifying which Ollama models to use for embeddings by language
+- `OLLAMA_MODELS`: Comma-separated list of Ollama model names to use for embeddings
 
 Example OLLAMA_MODELS configuration:
-```json
-{
-  "en": ["nomic-embed-text"],
-  "ru": ["multilingual-embedding-model"]
-}
+```
+OLLAMA_MODELS=nomic-embed-text,llama2,mistral
 ```
 
 ## Running the Service
@@ -106,7 +103,7 @@ python main.py --host 0.0.0.0 --port 50051
 With Ollama integration:
 
 ```bash
-OLLAMA_HOST="http://localhost:11434" OLLAMA_MODELS='{"en":["nomic-embed-text"]}' python main.py
+OLLAMA_HOST="http://localhost:11434" OLLAMA_MODELS="nomic-embed-text,llama2" python main.py
 ```
 
 ## API Reference

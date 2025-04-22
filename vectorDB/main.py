@@ -38,21 +38,25 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
         self.ollama_models = {}
         
         # Parse OLLAMA_MODELS environment variable if set
+        # Now expecting a comma-separated list of model names
         ollama_models_env = os.environ.get("OLLAMA_MODELS", "")
         if ollama_models_env:
             try:
-                model_specs = json.loads(ollama_models_env)
-                for lang, models in model_specs.items():
-                    if lang not in self.embedding_models:
-                        self.embedding_models[lang] = []
-                    for model in models:
+                model_names = [model.strip() for model in ollama_models_env.split(",")]
+                for model in model_names:
+                    if model:  # Skip empty strings
+                        # Default to English for all models
+                        if "en" not in self.embedding_models:
+                            self.embedding_models["en"] = []
+                        
                         model_name = f"ollama/{model}"
-                        if model_name not in self.embedding_models[lang]:
-                            self.embedding_models[lang].append(model_name)
+                        if model_name not in self.embedding_models["en"]:
+                            self.embedding_models["en"].append(model_name)
                             self.ollama_models[model] = {"name": model, "dimensions": None}
-                logger.info(f"Added Ollama embedding models: {self.ollama_models}")
-            except json.JSONDecodeError:
-                logger.error(f"Failed to parse OLLAMA_MODELS environment variable: {ollama_models_env}")
+                
+                logger.info(f"Added Ollama embedding models: {list(self.ollama_models.keys())}")
+            except Exception as e:
+                logger.error(f"Failed to parse OLLAMA_MODELS environment variable: {e}")
         
         self.loaded_models = {}
         self.milvus_host = milvus_host
@@ -474,20 +478,28 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
                 if language in self.embedding_models:
                     for model_name in self.embedding_models[language]:
                         dim = self._get_model(model_name).get_sentence_embedding_dimension()
+                        # Update provider detection to include Ollama models
+                        provider = "Ollama" if model_name.startswith("ollama/") else (
+                            "SentenceTransformers" if "sentence-transformers" in model_name else "OpenAI"
+                        )
                         models.append(vectordb_pb2.Model(
                             name=model_name,
                             language=language,
-                            provider="SentenceTransformers" if "sentence-transformers" in model_name else "OpenAI",
+                            provider=provider,
                             dimension=dim
                         ))
             else:
                 for lang, model_list in self.embedding_models.items():
                     for model_name in model_list:
                         dim = self._get_model(model_name).get_sentence_embedding_dimension()
+                        # Update provider detection to include Ollama models
+                        provider = "Ollama" if model_name.startswith("ollama/") else (
+                            "SentenceTransformers" if "sentence-transformers" in model_name else "OpenAI"
+                        )
                         models.append(vectordb_pb2.Model(
                             name=model_name,
                             language=lang,
-                            provider="SentenceTransformers" if "sentence-transformers" in model_name else "OpenAI",
+                            provider=provider,
                             dimension=dim
                         ))
             

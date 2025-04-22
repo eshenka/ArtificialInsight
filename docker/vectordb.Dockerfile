@@ -43,8 +43,8 @@ ENV MILVUS_HOST="localhost" \
 # - SERVICE_PORT: Port to expose the gRPC server (default: 50051)
 # - LOG_LEVEL: Logging level (default: "INFO")
 # - OLLAMA_HOST: Ollama API host URL (default: empty, e.g. "http://ollama:11434")
-# - OLLAMA_MODELS: JSON object mapping languages to Ollama model names (default: empty)
-#                  Format: {"en": ["llama2", "nomic-embed-text"], "ru": ["multilingual-model"]}
+# - OLLAMA_MODELS: Comma-separated list of Ollama model names to use for embeddings (default: empty)
+#                  Format: "nomic-embed-text,llama2,mistral"
 #                  Models will be automatically downloaded at startup
 #
 # Available Embedding Models:
@@ -54,7 +54,6 @@ ENV MILVUS_HOST="localhost" \
 #   * ollama/nomic-embed-text (when OLLAMA_MODELS is configured)
 # - Russian (ru):
 #   * sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-#   * ollama/... (when OLLAMA_MODELS is configured)
 #
 # Note: When using OpenAI models, you'll need to set OPENAI_API_KEY
 # ENV OPENAI_API_KEY="your-api-key"
