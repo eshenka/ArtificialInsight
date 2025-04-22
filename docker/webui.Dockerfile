@@ -9,11 +9,12 @@ FROM node:18 AS build
 WORKDIR /app
 
 # Copy package files and install dependencies
-COPY webui/package*.json ./
-RUN npm ci
+# COPY webui/package*.json ./
+# RUN npm ci
 
 # Copy the rest of the application code
 COPY webui/ ./
+RUN npm install
 
 # Build the application
 # Environment variables can be passed at build time if needed
