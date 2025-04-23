@@ -32,24 +32,43 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
     def __init__(self, config=None):
         self.config = config or {}
         
+        # Get timeout values from config
+        self.default_timeout = self.config.get('DEFAULT_TIMEOUT', 30)  # 30 seconds default
+        self.userdb_timeout = self.config.get('USERDB_TIMEOUT', 15)
+        self.vectordb_timeout = self.config.get('VECTORDB_TIMEOUT', 45)
+        self.scraping_timeout = self.config.get('SCRAPING_TIMEOUT', 120)
+        self.llm_timeout = self.config.get('LLM_TIMEOUT', 60)
+        
+        # Initialize service connections with options
+        channel_options = [
+            ('grpc.keepalive_time_ms', 10000),
+            ('grpc.keepalive_timeout_ms', 5000),
+            ('grpc.keepalive_permit_without_calls', True),
+            ('grpc.http2.max_pings_without_data', 0)
+        ]
+        
         # Initialize service connections
         self.userdb_channel = grpc.insecure_channel(
-            self.config.get('USERDB_SERVICE', 'localhost:50051')
+            self.config.get('USERDB_SERVICE', 'localhost:50051'),
+            options=channel_options
         )
         self.userdb_stub = userdb_pb2_grpc.DatabaseServiceStub(self.userdb_channel)
         
         self.vectordb_channel = grpc.insecure_channel(
-            self.config.get('VECTORDB_SERVICE', 'localhost:50052')
+            self.config.get('VECTORDB_SERVICE', 'localhost:50052'),
+            options=channel_options
         )
         self.vectordb_stub = vectordb_pb2_grpc.VectorDatabaseServiceStub(self.vectordb_channel)
         
         self.scraping_channel = grpc.insecure_channel(
-            self.config.get('SCRAPING_SERVICE', 'localhost:50053')
+            self.config.get('SCRAPING_SERVICE', 'localhost:50053'),
+            options=channel_options
         )
         self.scraping_stub = scraping_pb2_grpc.ScrapingServiceStub(self.scraping_channel)
         
         self.llm_channel = grpc.insecure_channel(
-            self.config.get('LLM_SERVICE', 'localhost:50054')
+            self.config.get('LLM_SERVICE', 'localhost:50054'),
+            options=channel_options
         )
         self.llm_stub = llms_pb2_grpc.LLMServiceStub(self.llm_channel)
 
@@ -101,7 +120,10 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
             user_request = userdb_pb2.CreateUserRequest(user=user)
             
             try:
-                user_response = self.userdb_stub.CreateUser(user_request)
+                user_response = self.userdb_stub.CreateUser(
+                    user_request, 
+                    timeout=self.userdb_timeout
+                )
                 token = user_response.token
                 self.log_event(f"Request {request_id}: User created with token: {token[:5]}...")
             except grpc.RpcError as e:
@@ -119,7 +141,10 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
             
             try:
                 self.log_event(f"Request {request_id}: Scraping started for URL: {request.entry_docs_url}")
-                scrape_response = self.scraping_stub.Scrape(scrape_request)
+                scrape_response = self.scraping_stub.Scrape(
+                    scrape_request,
+                    timeout=self.scraping_timeout
+                )
                 documents = scrape_response.documents
                 self.log_event(f"Request {request_id}: Scraping completed, {len(documents)} documents retrieved")
             except grpc.RpcError as e:
@@ -136,7 +161,10 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
             # Get embedding model for the specified language
             try:
                 models_request = vectordb_pb2.GetEmbeddingModelsRequest(language=request.language)
-                models_response = self.vectordb_stub.GetEmbeddingModels(models_request)
+                models_response = self.vectordb_stub.GetEmbeddingModels(
+                    models_request, 
+                    timeout=self.vectordb_timeout
+                )
                 
                 if not models_response.models:
                     error_msg = f"No embedding models available for language: {request.language}"
@@ -165,7 +193,10 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
             
             try:
                 self.log_event(f"Request {request_id}: Creating collection in vector database with {len(documents)} documents")
-                self.vectordb_stub.CreateCollection(create_collection_request)
+                self.vectordb_stub.CreateCollection(
+                    create_collection_request,
+                    timeout=self.vectordb_timeout
+                )
                 self.log_event(f"Request {request_id}: Collection created successfully")
             except grpc.RpcError as e:
                 error_msg = f"Failed to create collection: {e.details() if hasattr(e, 'details') else str(e)}"
@@ -205,7 +236,10 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
             
             try:
                 self.log_event(f"Request {request_id}: Validating user token")
-                user_response = self.userdb_stub.GetUser(user_request)
+                user_response = self.userdb_stub.GetUser(
+                    user_request,
+                    timeout=self.userdb_timeout
+                )
                 user = user_response.user
                 self.log_event(f"Request {request_id}: User validated successfully")
             except grpc.RpcError as e:
@@ -225,7 +259,10 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
             # Step 2: Update request count
             try:
                 count_request = userdb_pb2.UpdateUserRequestCountRequest(token=request.token, delta=1)
-                self.userdb_stub.UpdateUserRequestCount(count_request)
+                self.userdb_stub.UpdateUserRequestCount(
+                    count_request,
+                    timeout=self.userdb_timeout
+                )
                 self.log_event(f"Request {request_id}: User request count updated")
             except grpc.RpcError as e:
                 # Non-critical error, log but continue
@@ -242,7 +279,10 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
             
             try:
                 self.log_event(f"Request {request_id}: Searching for relevant documents")
-                search_response = self.vectordb_stub.Search(search_request)
+                search_response = self.vectordb_stub.Search(
+                    search_request,
+                    timeout=self.vectordb_timeout
+                )
                 # Convert vectordb.Document to common.Document
                 relevant_documents = [self._convert_vectordb_to_common_document(doc) for doc in search_response.results]
                 self.log_event(f"Request {request_id}: Found {len(relevant_documents)} relevant documents")
@@ -257,7 +297,10 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
             # First, get available models for the user's language
             try:
                 models_request = llms_pb2.GetAvailableModelsRequest(language=user.language)
-                models_response = self.llm_stub.GetAvailableModels(models_request)
+                models_response = self.llm_stub.GetAvailableModels(
+                    models_request,
+                    timeout=self.llm_timeout
+                )
                 
                 if not models_response.models:
                     error_msg = f"No LLM models available for language: {user.language}"
@@ -291,7 +334,10 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
             
             try:
                 self.log_event(f"Request {request_id}: Generating answer using LLM model: {model_name}")
-                generate_response = self.llm_stub.GenerateAnswer(generate_request)
+                generate_response = self.llm_stub.GenerateAnswer(
+                    generate_request,
+                    timeout=self.llm_timeout
+                )
                 answer = generate_response.answer
                 self.log_event(f"Request {request_id}: Answer generated successfully")
             except grpc.RpcError as e:

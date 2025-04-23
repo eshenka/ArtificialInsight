@@ -65,6 +65,12 @@ The controller can be configured via environment variables:
 - Service endpoints for LLM, Scraping, UserDB, and VectorDB services
 - Authentication settings
 - Logging verbosity levels
+- Service timeouts:
+  - `DEFAULT_TIMEOUT` - Default timeout for service calls (30 seconds)
+  - `SCRAPING_TIMEOUT` - Timeout for scraping operations (120 seconds)
+  - `LLM_TIMEOUT` - Timeout for LLM operations (60 seconds)
+  - `USERDB_TIMEOUT` - Timeout for UserDB operations (15 seconds)
+  - `VECTORDB_TIMEOUT` - Timeout for VectorDB operations (45 seconds)
 
 ## Usage
 
