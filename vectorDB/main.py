@@ -122,9 +122,10 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
             if ollama_model in self.ollama_models and self.ollama_models[ollama_model]["dimensions"] is not None:
                 # Return a dummy model object with the get_sentence_embedding_dimension method
                 class OllamaModel:
-                    def __init__(self, dimensions, model_name):
+                    def __init__(self, dimensions, model_name, ollama_host):
                         self.dimensions = dimensions
                         self.model_name = model_name
+                        self.ollama_host = ollama_host
                         
                     def get_sentence_embedding_dimension(self):
                         return self.dimensions
@@ -157,7 +158,7 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
                         
                         return np.array(embeddings)
                 
-                return OllamaModel(self.ollama_models[ollama_model]["dimensions"], model_name)
+                return OllamaModel(self.ollama_models[ollama_model]["dimensions"], model_name, self.ollama_host)
             else:
                 logger.error(f"Ollama model {ollama_model} not available or dimensions unknown")
                 raise ValueError(f"Ollama model {ollama_model} not available")
