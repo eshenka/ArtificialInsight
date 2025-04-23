@@ -247,7 +247,7 @@ services:
       - MILVUS_URL=milvus:19530
       - ATTU_LOG_LEVEL=${ATTU_LOG_LEVEL:-info}
     ports:
-      - "${ATTU_PORT:-8000}:3000"
+      - "${ATTU_PORT:-7999}:3000"
     restart: unless-stopped
     depends_on:
       - milvus
