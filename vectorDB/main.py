@@ -12,6 +12,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import vectordb_pb2
 import vectordb_pb2_grpc
+import common_pb2
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -173,7 +174,7 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
                 raise
         return self.loaded_models[model_name]
     
-    def _chunk_document(self, document: vectordb_pb2.Document, chunk_size=512, overlap=50):
+    def _chunk_document(self, document: common_pb2.Document, chunk_size=512, overlap=50):
         """Split document content into smaller chunks."""
         content = document.content
         source = document.source
@@ -195,26 +196,23 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
                         current_chunk += sentence + " "
                     else:
                         if current_chunk:
-                            doc = vectordb_pb2.Document(
+                            doc = common_pb2.Document(
                                 source=f"{source}#chunk{len(chunks)+1}",
-                                content=current_chunk.strip(),
-                                score=0.0
+                                content=current_chunk.strip()
                             )
                             chunks.append(doc)
                         current_chunk = sentence + " "
                 
                 if current_chunk:
-                    doc = vectordb_pb2.Document(
+                    doc = common_pb2.Document(
                         source=f"{source}#chunk{len(chunks)+1}",
-                        content=current_chunk.strip(),
-                        score=0.0
+                        content=current_chunk.strip()
                     )
                     chunks.append(doc)
             else:
-                doc = vectordb_pb2.Document(
+                doc = common_pb2.Document(
                     source=f"{source}#chunk{len(chunks)+1}",
-                    content=paragraph.strip(),
-                    score=0.0
+                    content=paragraph.strip()
                 )
                 chunks.append(doc)
         
@@ -411,10 +409,9 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
             response_docs = []
             for hits in results:
                 for hit in hits:
-                    doc = vectordb_pb2.Document(
+                    doc = common_pb2.Document(
                         source=hit.entity.get('source'),
-                        content=hit.entity.get('content'),
-                        score=float(hit.score)
+                        content=hit.entity.get('content')
                     )
                     response_docs.append(doc)
             
