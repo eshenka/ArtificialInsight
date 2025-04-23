@@ -33,7 +33,7 @@ def load_config():
         'SCRAPING_TIMEOUT': int(os.environ.get('SCRAPING_TIMEOUT', '1800')),   # Scraping might take longer
         'LLM_TIMEOUT': int(os.environ.get('LLM_TIMEOUT', '60')),              # LLM generation can take time
         'USERDB_TIMEOUT': int(os.environ.get('USERDB_TIMEOUT', '15')),        # User DB is usually quick
-        'VECTORDB_TIMEOUT': int(os.environ.get('VECTORDB_TIMEOUT', '45')),    # Vector search/insert can take time
+        'VECTORDB_TIMEOUT': int(os.environ.get('VECTORDB_TIMEOUT', '300')),    # Vector search/insert can take time
     }
     
     logger.info(f"Loaded configuration: {config}")
