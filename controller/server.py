@@ -70,8 +70,23 @@ def serve():
     """Start the gRPC server."""
     config = load_config()
     
+    # Add server-side keepalive options to handle client pings properly
+    server_options = [
+        # Allow pings even when there's no active streams
+        ('grpc.keepalive_permit_without_calls', 1),
+        # Minimum time between client pings (60 seconds)
+        ('grpc.http2.min_time_between_pings_ms', 60000),
+        # Allow up to 2 pings without sending data
+        ('grpc.http2.max_pings_without_data', 2),
+        # Ping timeout is 20 seconds
+        ('grpc.keepalive_timeout_ms', 20000),
+        # Maximum number of pings before considering client bad
+        ('grpc.http2.max_ping_strikes', 3)
+    ]
+    
     server = grpc.server(
-        concurrent.futures.ThreadPoolExecutor(max_workers=config['MAX_WORKERS'])
+        concurrent.futures.ThreadPoolExecutor(max_workers=config['MAX_WORKERS']),
+        options=server_options
     )
     
     controller_servicer = ControllerServicer(config)

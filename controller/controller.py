@@ -39,12 +39,19 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
         self.scraping_timeout = self.config.get('SCRAPING_TIMEOUT', 120)
         self.llm_timeout = self.config.get('LLM_TIMEOUT', 60)
         
-        # Initialize service connections with options
+        # Initialize service connections with updated options
+        # Reduce ping frequency to avoid "too_many_pings" error (ENHANCE_YOUR_CALM)
         channel_options = [
-            ('grpc.keepalive_time_ms', 10000),
-            ('grpc.keepalive_timeout_ms', 5000),
-            ('grpc.keepalive_permit_without_calls', True),
-            ('grpc.http2.max_pings_without_data', 0)
+            # Increase time between pings from 10s to 60s
+            ('grpc.keepalive_time_ms', 60000),  
+            # Increase timeout waiting for ping responses to 20s
+            ('grpc.keepalive_timeout_ms', 20000),  
+            # Only send pings when there are active calls
+            ('grpc.keepalive_permit_without_calls', False),  
+            # Allow server to send pings without data
+            ('grpc.http2.max_pings_without_data', 2),
+            # Client will comply with server's ping policy
+            ('grpc.client_channel_backup_poll_interval_ms', 200)
         ]
         
         # Initialize service connections
