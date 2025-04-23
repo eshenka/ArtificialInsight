@@ -12,7 +12,6 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import vectordb_pb2
 import vectordb_pb2_grpc
-import common_pb2
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -123,10 +122,9 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
             if ollama_model in self.ollama_models and self.ollama_models[ollama_model]["dimensions"] is not None:
                 # Return a dummy model object with the get_sentence_embedding_dimension method
                 class OllamaModel:
-                    def __init__(self, dimensions, model_name, ollama_host):
+                    def __init__(self, dimensions, model_name):
                         self.dimensions = dimensions
                         self.model_name = model_name
-                        self.ollama_host = ollama_host
                         
                     def get_sentence_embedding_dimension(self):
                         return self.dimensions
@@ -159,7 +157,7 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
                         
                         return np.array(embeddings)
                 
-                return OllamaModel(self.ollama_models[ollama_model]["dimensions"], model_name, self.ollama_host)
+                return OllamaModel(self.ollama_models[ollama_model]["dimensions"], model_name)
             else:
                 logger.error(f"Ollama model {ollama_model} not available or dimensions unknown")
                 raise ValueError(f"Ollama model {ollama_model} not available")
@@ -174,7 +172,7 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
                 raise
         return self.loaded_models[model_name]
     
-    def _chunk_document(self, document: common_pb2.Document, chunk_size=512, overlap=50):
+    def _chunk_document(self, document: vectordb_pb2.Document, chunk_size=512, overlap=50):
         """Split document content into smaller chunks."""
         content = document.content
         source = document.source
@@ -196,23 +194,26 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
                         current_chunk += sentence + " "
                     else:
                         if current_chunk:
-                            doc = common_pb2.Document(
+                            doc = vectordb_pb2.Document(
                                 source=f"{source}#chunk{len(chunks)+1}",
-                                content=current_chunk.strip()
+                                content=current_chunk.strip(),
+                                score=0.0
                             )
                             chunks.append(doc)
                         current_chunk = sentence + " "
                 
                 if current_chunk:
-                    doc = common_pb2.Document(
+                    doc = vectordb_pb2.Document(
                         source=f"{source}#chunk{len(chunks)+1}",
-                        content=current_chunk.strip()
+                        content=current_chunk.strip(),
+                        score=0.0
                     )
                     chunks.append(doc)
             else:
-                doc = common_pb2.Document(
+                doc = vectordb_pb2.Document(
                     source=f"{source}#chunk{len(chunks)+1}",
-                    content=paragraph.strip()
+                    content=paragraph.strip(),
+                    score=0.0
                 )
                 chunks.append(doc)
         
@@ -409,9 +410,10 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
             response_docs = []
             for hits in results:
                 for hit in hits:
-                    doc = common_pb2.Document(
+                    doc = vectordb_pb2.Document(
                         source=hit.entity.get('source'),
-                        content=hit.entity.get('content')
+                        content=hit.entity.get('content'),
+                        score=float(hit.score)
                     )
                     response_docs.append(doc)
             
