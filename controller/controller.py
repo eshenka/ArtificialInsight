@@ -326,7 +326,7 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
                 return controller_pb2.AnswerPromptResponse()
             
             # Create context with relevant documents
-            context_info = f"User query: {request.prompt}\nLanguage: {user.language}"
+            context_info = None
             llm_context = llms_pb2.Context(
                 info=context_info,
                 documents=relevant_documents
