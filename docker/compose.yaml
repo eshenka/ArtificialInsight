@@ -240,6 +240,25 @@ services:
       - milvus-network
     attach: false
 
+  # Attu - Milvus administration tool
+  attu:
+    image: zilliz/attu:v2.5.6
+    environment:
+      - MILVUS_URL=milvus:19530
+      - ATTU_LOG_LEVEL=${ATTU_LOG_LEVEL:-info}
+    ports:
+      - "${ATTU_PORT:-8000}:3000"
+    restart: unless-stopped
+    depends_on:
+      - milvus
+    networks:
+      - milvus-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 #############################################
 # Networks
 #############################################
@@ -310,6 +329,10 @@ volumes:
 # - POSTGRES_PASSWORD: PostgreSQL password (default: password)
 # - POSTGRES_USER: PostgreSQL username (default: postgres)
 # - POSTGRES_DB: PostgreSQL database name (default: aiusers)
+#
+# Attu Configuration:
+# - ATTU_PORT: Port to expose the Attu UI (default: 8000)
+# - ATTU_LOG_LEVEL: Logging level for Attu (default: info)
 #
 # General Configuration:
 # - LOG_LEVEL: Logging level for all services (default: INFO)
