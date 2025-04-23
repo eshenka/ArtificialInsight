@@ -21,10 +21,10 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 
 _sym_db = _symbol_database.Default()
 
+# Create a separate descriptor pool for common.proto
+_POOL = _descriptor_pool.DescriptorPool()
 
-
-
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0c\x63ommon.proto\x12\x06\x63ommon\"+\n\x08\x44ocument\x12\x0e\n\x06source\x18\x01 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x03 \x01(\t\"\x81\x01\n\x0bScrapeRules\x12\x11\n\tmax_depth\x18\x01 \x01(\r\x12\x11\n\tmax_pages\x18\x02 \x01(\r\x12%\n\x0fscrape_patterns\x18\x03 \x03(\x0b\x32\x0c.common.Rule\x12%\n\x0e\x66orbidden_urls\x18\x04 \x03(\x0b\x32\r.common.Regex\"8\n\x04Rule\x12\x1a\n\x03url\x18\x01 \x01(\x0b\x32\r.common.Regex\x12\x14\n\x0c\x63ss_selector\x18\x02 \x01(\t\"\x18\n\x05Regex\x12\x0f\n\x07pattern\x18\x01 \x01(\tb\x06proto3')
+DESCRIPTOR = _POOL.AddSerializedFile(b'\n\x0c\x63ommon.proto\x12\x06\x63ommon\"+\n\x08\x44ocument\x12\x0e\n\x06source\x18\x01 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x03 \x01(\t\"\x81\x01\n\x0bScrapeRules\x12\x11\n\tmax_depth\x18\x01 \x01(\r\x12\x11\n\tmax_pages\x18\x02 \x01(\r\x12%\n\x0fscrape_patterns\x18\x03 \x03(\x0b\x32\x0c.common.Rule\x12%\n\x0e\x66orbidden_urls\x18\x04 \x03(\x0b\x32\r.common.Regex\"8\n\x04Rule\x12\x1a\n\x03url\x18\x01 \x01(\x0b\x32\r.common.Regex\x12\x14\n\x0c\x63ss_selector\x18\x02 \x01(\t\"\x18\n\x05Regex\x12\x0f\n\x07pattern\x18\x01 \x01(\tb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
