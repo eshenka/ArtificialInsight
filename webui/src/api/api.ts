@@ -1,36 +1,34 @@
-// API interface for ArtificialInsight RAG system
+// API client for communicating with the backend service
 
-// Types for the API requests and responses
-export interface PromptRequest {
-  prompt: string;
-}
+// Get the API base URL from the environment variables
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
-export interface AnswerResponse {
-  answer: string;
-}
-
-// ScrapeRules structure as defined in common.proto
-export interface RegexPattern {
+// Types
+export interface ScrapeRegex {
   pattern: string;
 }
 
-export interface Rule {
-  url: RegexPattern;
+export interface ScrapeRule {
+  url: ScrapeRegex;
   css_selector?: string;
 }
 
 export interface ScrapeRules {
-  max_depth?: number;
-  max_pages?: number;
-  scrape_patterns: Rule[];
-  forbidden_urls: RegexPattern[];
+  max_depth: number;
+  max_pages: number;
+  scrape_patterns: ScrapeRule[];
+  forbidden_urls: ScrapeRegex[];
 }
 
 export interface PipelineResponse {
   token: string;
 }
 
-// Function to create a new RAG pipeline
+export interface AnswerResponse {
+  answer: string;
+}
+
+// Create a new pipeline
 export async function createPipeline(
   user_name: string,
   description: string,
@@ -38,47 +36,42 @@ export async function createPipeline(
   entry_docs_url: string,
   rules: ScrapeRules
 ): Promise<PipelineResponse> {
-  // Convert the rules object to a JSON string
-  const rulesJson = JSON.stringify(rules);
-  
-  // Create FormData object as the API expects application/x-www-form-urlencoded
+  // Create form data for the request
   const formData = new FormData();
   formData.append('user_name', user_name);
   formData.append('description', description);
   formData.append('language', language);
   formData.append('entry_docs_url', entry_docs_url);
-  formData.append('rules', rulesJson);
+  formData.append('rules', JSON.stringify(rules));
   
-  const response = await fetch('/api/pipeline', {
+  // Send the request
+  const response = await fetch(`${API_BASE_URL}/pipeline`, {
     method: 'POST',
     body: formData,
   });
   
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Failed to create pipeline: ${response.statusText}`);
+    const errorText = await response.text();
+    throw new Error(errorText || `Error creating pipeline: ${response.status}`);
   }
   
   return response.json();
 }
 
-// Function to send a prompt and get an answer
-export async function sendPrompt(
-  token: string,
-  prompt: string
-): Promise<AnswerResponse> {
-  const response = await fetch('/api/answer', {
+// Get answer from the RAG system
+export async function getAnswer(token: string, prompt: string): Promise<AnswerResponse> {
+  const response = await fetch(`${API_BASE_URL}/answer`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': token,
+      'Authorization': token
     },
     body: JSON.stringify({ prompt }),
   });
   
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Failed to get answer: ${response.statusText}`);
+    const errorText = await response.text();
+    throw new Error(errorText || `Error fetching answer: ${response.status}`);
   }
   
   return response.json();

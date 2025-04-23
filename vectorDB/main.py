@@ -29,7 +29,7 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
     def __init__(self, milvus_host="localhost", milvus_port=19530, ollama_host=None):
         """Initialize the service with connection to Milvus."""
         self.embedding_models = {
-            "en": ["sentence-transformers/all-MiniLM-L6-v2", "OpenAI/text-embedding-ada-002"],
+            "en": ["sentence-transformers/all-MiniLM-L6-v2"],
             "ru": ["sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"]
         }
         
@@ -196,8 +196,7 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
                         if current_chunk:
                             doc = vectordb_pb2.Document(
                                 source=f"{source}#chunk{len(chunks)+1}",
-                                content=current_chunk.strip(),
-                                score=0.0
+                                content=current_chunk.strip()
                             )
                             chunks.append(doc)
                         current_chunk = sentence + " "
@@ -205,15 +204,13 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
                 if current_chunk:
                     doc = vectordb_pb2.Document(
                         source=f"{source}#chunk{len(chunks)+1}",
-                        content=current_chunk.strip(),
-                        score=0.0
+                        content=current_chunk.strip()
                     )
                     chunks.append(doc)
             else:
                 doc = vectordb_pb2.Document(
                     source=f"{source}#chunk{len(chunks)+1}",
-                    content=paragraph.strip(),
-                    score=0.0
+                    content=paragraph.strip()
                 )
                 chunks.append(doc)
         
@@ -234,6 +231,10 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
         except Exception as e:
             logger.error(f"Error ensuring database exists: {e}")
             return False
+
+    def _sanitize_identifier(self, identifier: str) -> str:
+        """Convert dashes to underscores in identifiers to ensure compatibility with Milvus."""
+        return identifier.replace('-', '_')
 
     def _create_collection_in_db(self, collection_name: str, embedding_model: str, database_name: str):
         """Create a collection in the specified database."""
@@ -270,7 +271,8 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
         embedding_model = request.embedding_model
         documents = request.documents
         
-        database_name = f"company_{company_id}"
+        sanitized_company_id = self._sanitize_identifier(company_id)
+        database_name = f"company_{sanitized_company_id}"
         collection_name = "documents"
         
         try:
@@ -314,7 +316,8 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
         company_id = request.collection_name
         documents = request.documents
         
-        database_name = f"company_{company_id}"
+        sanitized_company_id = self._sanitize_identifier(company_id)
+        database_name = f"company_{sanitized_company_id}"
         collection_name = "documents"
         
         try:
@@ -365,7 +368,8 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
         query = request.query
         limit = request.limit if request.limit > 0 else 10
         
-        database_name = f"company_{company_id}"
+        sanitized_company_id = self._sanitize_identifier(company_id)
+        database_name = f"company_{sanitized_company_id}"
         collection_name = "documents"
         
         try:
@@ -405,8 +409,7 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
                 for hit in hits:
                     doc = vectordb_pb2.Document(
                         source=hit.entity.get('source'),
-                        content=hit.entity.get('content'),
-                        score=float(hit.score)
+                        content=hit.entity.get('content')
                     )
                     response_docs.append(doc)
             
@@ -419,7 +422,8 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
     def DeleteCollection(self, request, context):
         """Implementation of DeleteCollection RPC."""
         company_id = request.collection_name
-        database_name = f"company_{company_id}"
+        sanitized_company_id = self._sanitize_identifier(company_id)
+        database_name = f"company_{sanitized_company_id}"
         
         try:
             all_dbs = db.list_database()
@@ -437,7 +441,8 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
     def GetCollectionInfo(self, request, context):
         """Implementation of GetCollectionInfo RPC."""
         company_id = request.collection_name
-        database_name = f"company_{company_id}"
+        sanitized_company_id = self._sanitize_identifier(company_id)
+        database_name = f"company_{sanitized_company_id}"
         collection_name = "documents"
         
         try:

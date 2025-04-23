@@ -1,0 +1,20 @@
+# gRPC dependencies
+grpcio>=1.71.0
+grpcio-tools>=1.71.0
+protobuf>=5.29.0
+
+# Vector Database
+pymilvus>=2.3.0
+
+# Embedding Models
+sentence-transformers>=2.2.2
+numpy>=1.24.0
+
+# HTTP client for Ollama integration
+requests>=2.28.0
+
+# Fix for marshmallow/environs compatibility issue
+marshmallow==3.12.2
+environs==9.5.0
+
+# Python 3.8+ required

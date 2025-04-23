@@ -71,6 +71,7 @@ class VectorDatabaseServiceServicer(object):
 
     def CreateCollection(self, request, context):
         """Create new collection and add all docuemnts in the request
+        Documents do not necessarily match the required maximum size
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -79,6 +80,7 @@ class VectorDatabaseServiceServicer(object):
     def AddDocuments(self, request, context):
         """Add documents to the existing collection
         Field `score` is ignored
+        Documents do not necessarily match the required maximum size
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')

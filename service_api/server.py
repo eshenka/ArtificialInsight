@@ -22,7 +22,12 @@ except ImportError:
     from rpc import common_pb2 # Added import for common types
 
 
-from config import CONTROLLER_ADDR, GATEWAY_HTTP_PORT
+from config import (
+    CONTROLLER_ADDR, 
+    GATEWAY_HTTP_PORT, 
+    ANSWER_TIMEOUT, 
+    PIPELINE_TIMEOUT
+)
 
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -101,8 +106,8 @@ async def answer_prompt(
             token=token,
             prompt=request_body.prompt
         )
-        logger.info(f"Sending request to controller at {CONTROLLER_ADDR}")
-        grpc_response = stub.AnswerPrompt(grpc_request, timeout=30) # Add a timeout
+        logger.info(f"Sending request to controller at {CONTROLLER_ADDR} with timeout of {ANSWER_TIMEOUT}s")
+        grpc_response = stub.AnswerPrompt(grpc_request, timeout=ANSWER_TIMEOUT) # Increased timeout
         logger.info(f"Received response from controller for token: {token[:5]}...")
         return AnswerResponse(answer=grpc_response.answer)
 
@@ -179,8 +184,8 @@ async def create_pipeline(
             rules=scrape_rules_proto
         )
 
-        logger.info(f"Sending CreatePipeline request to controller at {CONTROLLER_ADDR}")
-        grpc_response = stub.CreatePipeline(grpc_request, timeout=60) # Longer timeout for pipeline creation
+        logger.info(f"Sending CreatePipeline request to controller at {CONTROLLER_ADDR} with timeout of {PIPELINE_TIMEOUT}s")
+        grpc_response = stub.CreatePipeline(grpc_request, timeout=PIPELINE_TIMEOUT) # Increased timeout for pipeline creation
         logger.info(f"Pipeline created successfully for user: {user_name}, Token: {grpc_response.token[:5]}...")
         return PipelineResponse(token=grpc_response.token)
 

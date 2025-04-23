@@ -17,14 +17,20 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ./service_api /app/
 COPY ./proto /app/proto
 
-# Generate Python code from protobuf definitions
+# Generate Python code from protobuf definitions and fix imports
 RUN mkdir -p /app/rpc && \
     python -m grpc_tools.protoc \
     --proto_path=/app/proto \
     --python_out=/app/rpc \
     --grpc_python_out=/app/rpc \
     /app/proto/controller.proto \
-    /app/proto/common.proto
+    /app/proto/common.proto && \
+    # Create __init__.py file to make rpc a proper package
+    touch /app/rpc/__init__.py && \
+    # Fix imports in generated files
+    sed -i 's/import common_pb2/import rpc.common_pb2/g' /app/rpc/controller_pb2.py && \
+    # Fix any imports in the grpc files too
+    sed -i 's/import controller_pb2/import rpc.controller_pb2/g' /app/rpc/controller_pb2_grpc.py
 
 # Create a non-root user to run the application
 RUN adduser --disabled-password --gecos "" appuser
@@ -33,8 +39,8 @@ USER appuser
 # Expose the HTTP port
 EXPOSE ${GATEWAY_HTTP_PORT}
 
-# Command to run the application
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "${GATEWAY_HTTP_PORT}"]
+# Modified CMD to use shell form for environment variable substitution
+CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port $GATEWAY_HTTP_PORT"]
 
 # ===================================================================================
 # Configuration Instructions

@@ -65,6 +65,29 @@ The controller can be configured via environment variables:
 - Service endpoints for LLM, Scraping, UserDB, and VectorDB services
 - Authentication settings
 - Logging verbosity levels
+- Service timeouts:
+  - `DEFAULT_TIMEOUT` - Default timeout for service calls (30 seconds)
+  - `SCRAPING_TIMEOUT` - Timeout for scraping operations (120 seconds)
+  - `LLM_TIMEOUT` - Timeout for LLM operations (60 seconds)
+  - `USERDB_TIMEOUT` - Timeout for UserDB operations (15 seconds)
+  - `VECTORDB_TIMEOUT` - Timeout for VectorDB operations (45 seconds)
+
+## gRPC Connection Management
+
+The controller uses the following gRPC keepalive settings to maintain stable connections:
+
+### Client Side (when connecting to other services)
+- `grpc.keepalive_time_ms`: 60000 (60 seconds between pings)
+- `grpc.keepalive_timeout_ms`: 20000 (20 seconds ping timeout)
+- `grpc.keepalive_permit_without_calls`: False (only ping when there are active calls)
+
+### Server Side (when accepting connections)
+- `grpc.keepalive_permit_without_calls`: True (allow pings even without active calls)
+- `grpc.http2.min_time_between_pings_ms`: 60000 (minimum 60 seconds between client pings)
+- `grpc.http2.max_pings_without_data`: 2 (allow up to 2 pings without data)
+- `grpc.http2.max_ping_strikes`: 3 (disconnect clients after 3 bad pings)
+
+These settings prevent "ENHANCE_YOUR_CALM" (too many pings) errors while maintaining connection stability.
 
 ## Usage
 

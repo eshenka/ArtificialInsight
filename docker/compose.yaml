@@ -8,8 +8,6 @@
 #   2. Start all services: docker-compose up -d
 #   3. Access Web UI at http://localhost:5173
 
-version: '3.8'
-
 services:
   #############################################
   # Frontend Services
@@ -21,11 +19,13 @@ services:
       context: ..
       dockerfile: docker/webui.Dockerfile
       args:
-        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000}
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-/api}
     ports:
       - "${WEBUI_PORT:-5173}:80"
     depends_on:
       - service-api
+    volumes:
+      - ../docker/nginx.conf:/etc/nginx/conf.d/default.conf
     restart: unless-stopped
     networks:
       - frontend-network
@@ -82,7 +82,7 @@ services:
     environment:
       - OLLAMA_HOST=http://ollama:11434
       - USE_OLLAMA_FALLBACK=${USE_OLLAMA_FALLBACK:-true}
-      - REQUIRED_OLLAMA_MODELS=${REQUIRED_OLLAMA_MODELS:-llama2:latest,mistral:latest}
+      - REQUIRED_OLLAMA_MODELS=${REQUIRED_OLLAMA_MODELS:-gemma3:1b}
       - AUTO_PULL_OLLAMA_MODELS=${AUTO_PULL_OLLAMA_MODELS:-true}
       - LLM_KEY=${LLM_KEY:-}
       - GRPC_PORT=${LLM_PORT:-50052}
@@ -178,18 +178,88 @@ services:
     networks:
       - ollama-network
 
-  # Milvus - Vector database for document retrieval
-  milvus:
-    image: milvusdb/milvus:v2.3.3
-    command: ["milvus", "run", "standalone"]
+  # Milvus - Vector database components
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.18
     environment:
-      - ETCD_ENDPOINTS=localhost:2379
-      - DATA_PATH=/var/lib/milvus/data
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
     volumes:
-      - milvus_data:/var/lib/milvus
-    restart: unless-stopped
+      - etcd_data:/etcd
+    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
     networks:
       - milvus-network
+
+  minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - minio_data:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - milvus-network
+
+  milvus:
+    container_name: milvus-standalone
+    image: milvusdb/milvus:v2.5.10
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+    - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    volumes:
+      - milvus_data:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - etcd
+      - minio
+    networks:
+      - milvus-network
+    attach: false
+
+  # Attu - Milvus administration tool
+  attu:
+    image: zilliz/attu:v2.5.6
+    environment:
+      - MILVUS_URL=milvus:19530
+      - ATTU_LOG_LEVEL=${ATTU_LOG_LEVEL:-info}
+    ports:
+      - "${ATTU_PORT:-7999}:3000"
+    restart: unless-stopped
+    depends_on:
+      - milvus
+    networks:
+      - milvus-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 #############################################
 # Networks
@@ -215,6 +285,10 @@ volumes:
   ollama_data:
     driver: local
   milvus_data:
+    driver: local
+  etcd_data:
+    driver: local
+  minio_data:
     driver: local
 
 # Environment Variable Configuration:
@@ -257,6 +331,10 @@ volumes:
 # - POSTGRES_PASSWORD: PostgreSQL password (default: password)
 # - POSTGRES_USER: PostgreSQL username (default: postgres)
 # - POSTGRES_DB: PostgreSQL database name (default: aiusers)
+#
+# Attu Configuration:
+# - ATTU_PORT: Port to expose the Attu UI (default: 8000)
+# - ATTU_LOG_LEVEL: Logging level for Attu (default: info)
 #
 # General Configuration:
 # - LOG_LEVEL: Logging level for all services (default: INFO)

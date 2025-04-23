@@ -17,7 +17,7 @@ This service acts as an HTTP gateway, providing a simple RESTful API interface f
 
 *   **Endpoint:** `/answer`
 *   **Method:** `POST`
-*   **Description:** Receives a user prompt and forwards it to the controller service to get an answer using the RAG pipeline associated with the provided token.
+*   **Description:** Receives a user prompt and forwards it to the controller service to get an answer using the RAG pipeline associated with the provided token. The operation may take up to 90 seconds to complete.
 *   **Headers:**
     *   `Authorization: <user_token>` (Replace `<user_token>` with the actual user authentication token)
 *   **Request Body (`application/json`):**
@@ -43,7 +43,7 @@ This service acts as an HTTP gateway, providing a simple RESTful API interface f
 
 *   **Endpoint:** `/pipeline`
 *   **Method:** `POST`
-*   **Description:** Creates a new RAG pipeline configuration by forwarding the details to the controller service. Accepts data via `application/x-www-form-urlencoded`.
+*   **Description:** Creates a new RAG pipeline configuration by forwarding the details to the controller service. This operation involves scraping and indexing documentation which may take a significant amount of time (up to 30 minutes). Accepts data via `application/x-www-form-urlencoded`.
 *   **Request Body (`application/x-www-form-urlencoded`):**
     *   `user_name`: (string, required) - Identifier for the user creating the pipeline.
     *   `description`: (string, required) - A description for the new pipeline.
@@ -88,3 +88,12 @@ This service acts as an HTTP gateway, providing a simple RESTful API interface f
 ## Internal Communication
 
 The gateway service communicates with the `controller.Controller` gRPC service defined in `proto/controller.proto`. It calls the `AnswerPrompt` and `CreatePipeline` RPC methods.
+
+## Configuration
+
+The service can be configured using environment variables:
+
+* `CONTROLLER_ADDR`: Address of the controller gRPC service (default: "localhost:50051")
+* `GATEWAY_HTTP_PORT`: Port for the HTTP server (default: 8000)
+* `ANSWER_TIMEOUT`: Timeout in seconds for answer requests to the controller (default: 90)
+* `PIPELINE_TIMEOUT`: Timeout in seconds for pipeline creation requests (default: 1800 / 30 minutes)

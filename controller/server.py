@@ -4,6 +4,7 @@ import logging
 import concurrent.futures
 import signal
 import time
+import threading
 from contextlib import contextmanager
 
 from controller.rpc import controller_pb2_grpc
@@ -27,6 +28,12 @@ def load_config():
         'SCRAPING_SERVICE': os.environ.get('SCRAPING_SERVICE', 'localhost:50053'),
         'LLM_SERVICE': os.environ.get('LLM_SERVICE', 'localhost:50054'),
         'MAX_WORKERS': int(os.environ.get('MAX_WORKERS', '10')),
+        # Adding timeout configuration in seconds
+        'DEFAULT_TIMEOUT': int(os.environ.get('DEFAULT_TIMEOUT', '30')),  
+        'SCRAPING_TIMEOUT': int(os.environ.get('SCRAPING_TIMEOUT', '1800')),   # Scraping might take longer
+        'LLM_TIMEOUT': int(os.environ.get('LLM_TIMEOUT', '60')),              # LLM generation can take time
+        'USERDB_TIMEOUT': int(os.environ.get('USERDB_TIMEOUT', '15')),        # User DB is usually quick
+        'VECTORDB_TIMEOUT': int(os.environ.get('VECTORDB_TIMEOUT', '300')),    # Vector search/insert can take time
     }
     
     logger.info(f"Loaded configuration: {config}")
@@ -36,7 +43,7 @@ def load_config():
 @contextmanager
 def graceful_exit(server):
     """Context manager for graceful server shutdown."""
-    stop_event = concurrent.futures.Event()
+    stop_event = threading.Event()
     
     def handle_signal(signum, frame):
         logger.info(f"Received signal {signum}, initiating graceful shutdown")
@@ -63,8 +70,23 @@ def serve():
     """Start the gRPC server."""
     config = load_config()
     
+    # Add server-side keepalive options to handle client pings properly
+    server_options = [
+        # Allow pings even when there's no active streams
+        ('grpc.keepalive_permit_without_calls', 1),
+        # Minimum time between client pings (60 seconds)
+        ('grpc.http2.min_time_between_pings_ms', 60000),
+        # Allow up to 2 pings without sending data
+        ('grpc.http2.max_pings_without_data', 2),
+        # Ping timeout is 20 seconds
+        ('grpc.keepalive_timeout_ms', 20000),
+        # Maximum number of pings before considering client bad
+        ('grpc.http2.max_ping_strikes', 3)
+    ]
+    
     server = grpc.server(
-        concurrent.futures.ThreadPoolExecutor(max_workers=config['MAX_WORKERS'])
+        concurrent.futures.ThreadPoolExecutor(max_workers=config['MAX_WORKERS']),
+        options=server_options
     )
     
     controller_servicer = ControllerServicer(config)

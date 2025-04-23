@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { sendPrompt } from '../api/api';
+import { getAnswer } from '../api/api';
 
 interface Message {
   id: string;
@@ -48,7 +48,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ initialToken, onTokenChange, onCl
     
     try {
       // Make API call to get a response
-      const response = await sendPrompt(token, userInput);
+      const response = await getAnswer(token, userInput);
       
       const aiResponse: Message = {
         id: Date.now().toString(),
