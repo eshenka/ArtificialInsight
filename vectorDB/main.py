@@ -196,8 +196,7 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
                         if current_chunk:
                             doc = vectordb_pb2.Document(
                                 source=f"{source}#chunk{len(chunks)+1}",
-                                content=current_chunk.strip(),
-                                score=0.0
+                                content=current_chunk.strip()
                             )
                             chunks.append(doc)
                         current_chunk = sentence + " "
@@ -205,15 +204,13 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
                 if current_chunk:
                     doc = vectordb_pb2.Document(
                         source=f"{source}#chunk{len(chunks)+1}",
-                        content=current_chunk.strip(),
-                        score=0.0
+                        content=current_chunk.strip()
                     )
                     chunks.append(doc)
             else:
                 doc = vectordb_pb2.Document(
                     source=f"{source}#chunk{len(chunks)+1}",
-                    content=paragraph.strip(),
-                    score=0.0
+                    content=paragraph.strip()
                 )
                 chunks.append(doc)
         
@@ -412,8 +409,7 @@ class VectorDatabaseService(vectordb_pb2_grpc.VectorDatabaseServiceServicer):
                 for hit in hits:
                     doc = vectordb_pb2.Document(
                         source=hit.entity.get('source'),
-                        content=hit.entity.get('content'),
-                        score=float(hit.score)
+                        content=hit.entity.get('content')
                     )
                     response_docs.append(doc)
             

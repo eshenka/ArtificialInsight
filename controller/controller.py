@@ -16,6 +16,7 @@ from controller.rpc import scraping_pb2
 from controller.rpc import scraping_pb2_grpc
 from controller.rpc import llms_pb2
 from controller.rpc import llms_pb2_grpc
+from controller.rpc import common_pb2
 
 # Set up logging
 logging.basicConfig(
@@ -60,6 +61,20 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
             logger.warning(message)
         else:
             logger.info(message)
+
+    def _convert_common_to_vectordb_document(self, doc):
+        """Convert common.Document to vectordb.Document."""
+        return vectordb_pb2.Document(
+            source=doc.source,
+            content=doc.content
+        )
+    
+    def _convert_vectordb_to_common_document(self, doc):
+        """Convert vectordb.Document to common.Document."""
+        return common_pb2.Document(
+            source=doc.source,
+            content=doc.content
+        )
 
     def CreatePipeline(self, request, context):
         """
@@ -138,11 +153,14 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
                 context.set_details(error_msg)
                 return controller_pb2.CreatePipelineResponse()
             
+            # Convert common.Document to vectordb.Document
+            vectordb_documents = [self._convert_common_to_vectordb_document(doc) for doc in documents]
+            
             # Create collection and add documents
             create_collection_request = vectordb_pb2.CreateCollectionRequest(
                 collection_name=collection_name,
                 embedding_model=embedding_model,
-                documents=documents
+                documents=vectordb_documents
             )
             
             try:
@@ -225,7 +243,8 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
             try:
                 self.log_event(f"Request {request_id}: Searching for relevant documents")
                 search_response = self.vectordb_stub.Search(search_request)
-                relevant_documents = search_response.results
+                # Convert vectordb.Document to common.Document
+                relevant_documents = [self._convert_vectordb_to_common_document(doc) for doc in search_response.results]
                 self.log_event(f"Request {request_id}: Found {len(relevant_documents)} relevant documents")
             except grpc.RpcError as e:
                 error_msg = f"Failed to search documents: {e.details() if hasattr(e, 'details') else str(e)}"
