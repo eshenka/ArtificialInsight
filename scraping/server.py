@@ -50,7 +50,7 @@ class Scraper:
         self.max_pages = self.rules.max_pages if self.rules.max_pages > 0 else float('inf')
 
     def _compile_rules(self):
-        """   Compiles regex patterns from the rules."""
+        """ Compiles regex patterns from the rules."""
         try:
             self.forbidden_patterns = [re.compile(r.pattern) for r in self.rules.forbidden_urls]
             self.scrape_rules_config = []
