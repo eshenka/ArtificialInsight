@@ -10,6 +10,7 @@ const POSTGRES_URL_ENV_VAR: &str = "USERDB_PG_URL";
 const ADDRESS_ENV_VAR: &str = "USERDB_ADDR";
 const PORT_ENV_VAR: &str = "USERDB_PORT";
 
+
 const DEFAULT_ADDRESS: &str = "localhost";
 const DEFAULT_PORT: u16 = 2780;
 const DEFAULT_PG_URL: &str = "";
