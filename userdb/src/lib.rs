@@ -8,6 +8,7 @@ use db_service::*;
 
 pub mod db_service {
     tonic::include_proto!("userdb");
+
 }
 
 pub struct DatabaseService {
