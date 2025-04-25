@@ -5,7 +5,6 @@ import time
 import logging
 from typing import List, Optional
 
-
 from pymilvus import connections, Collection, FieldSchema, CollectionSchema, DataType, utility
 from pymilvus import db 
 import sys
