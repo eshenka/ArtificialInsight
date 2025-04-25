@@ -1,0 +1,145 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      userdb: ${{ steps.filter.outputs.userdb }}
+      service_api: ${{ steps.filter.outputs.service_api }}
+      vecdb: ${{ steps.filter.outputs.vecdb }}
+      controller: ${{ steps.filter.outputs.controller }}
+      scraping: ${{ steps.filter.outputs.scraping }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Detect changed directories
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            userdb:
+              - 'userdb/**'
+            service_api:
+              - 'service-api/**'
+            vecdb:
+              - 'vecdb/**'
+            controller:
+              - 'controller/**'
+            scraping:
+              - 'scraping/**'
+            frontend:
+              - 'frontend/**'
+
+  test-userdb:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.userdb == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Rust
+        uses: actions/setup-rust@v1
+        with:
+          rust-version: stable
+      - name: Run tests
+        run: |
+          cd userdb
+          cargo test
+
+  test-service-api:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.service_api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          cd service-api
+          pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          cd service-api
+          pytest
+
+  test-vecdb:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.vecdb == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          cd vecdb
+          pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          cd vecdb
+          pytest
+
+  test-controller:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.controller == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          cd controller
+          pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          cd controller
+          pytest
+
+  test-scraping:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.scraping == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          cd scraping
+          pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          cd scraping
+          pytest
+
+  test-frontend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          cd frontend
+          pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          cd frontend
+          pytest
