@@ -7,3 +7,4 @@ python-dotenv
 python-multipart
 grpcio>=1.71.0
 grpcio-tools>=1.71.0
+pytest
