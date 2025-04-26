@@ -28,10 +28,6 @@ jobs:
           filters: |
             userdb:
               - 'userdb/**'
-            service_api:
-              - 'service-api/**'
-            vectorDB:
-              - 'vectorDB/**'
             scraping:
               - 'scraping/**'
 
