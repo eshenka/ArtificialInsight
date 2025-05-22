@@ -84,7 +84,7 @@ jobs:
           cache-dependency-path: webui/package-lock.json # Or webui/yarn.lock if you use Yarn
 
       - name: Install dependencies
-        run: npm install
+        run: ll | npm install
 
       - name: Lint React code
         id: eslint_report
