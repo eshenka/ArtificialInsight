@@ -68,13 +68,29 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       eslint_report_generated: steps.eslint_report.outcome == 'success'
-    defaults:
-      run:
-        working-directory: webui
+    # Removed job-level defaults for working-directory to be more explicit
+    # defaults:
+    #   run:
+    #     working-directory: webui
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Display directory structure at root
+        run: |
+          echo "Running in $PWD"
+          echo "Listing contents of workspace root:"
+          ls -la
+          echo "Checking for webui directory:"
+          if [ -d "webui" ]; then
+            echo "webui directory exists. Contents:"
+            ls -la webui
+          else
+            echo "ERROR: webui directory does NOT exist at $PWD/webui"
+            # Optionally, fail the job if webui is critical and missing
+            # exit 1 
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -83,12 +99,17 @@ jobs:
           cache: 'npm'
           cache-dependency-path: webui/package-lock.json # Or webui/yarn.lock if you use Yarn
 
-      - name: List files and Install dependencies
+      - name: Install dependencies in webui
+        working-directory: webui # Explicitly set for this step
         run: |
-          ls -la # More standard command than ll
+          echo "Current directory for npm install: $(pwd)"
+          echo "Listing contents of webui before npm install:"
+          ls -la
+          echo "Attempting npm install..."
           npm install
   
       - name: Lint React code
+        working-directory: webui # Explicitly set for this step
         id: eslint_report
         run: npm run lint # Assumes "lint" script in package.json generates eslint-report.json
 
@@ -97,7 +118,7 @@ jobs:
         with:
           name: eslint-report-artifact
           path: webui/eslint-report.json # Path to the generated report
-
+      
   sonar:
     name: SonarQube Scan
     runs-on: ubuntu-latest
