@@ -109,6 +109,10 @@ jobs:
           echo "Attempting npm install..."
           npm install
   
+      - name: Install eslint-plugin-react
+        working-directory: webui # Explicitly set for this step
+        run: npm install eslint-plugin-react@latest
+
       - name: Lint React code
         working-directory: webui # Explicitly set for this step
         id: eslint_report
