@@ -64,7 +64,7 @@ jobs:
           pytest --cov=. --cov-report=xml
 
       - name: Upload coverage to artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.component }}-coverage
           path: ${{ matrix.component }}/coverage.xml
@@ -91,7 +91,7 @@ jobs:
           args: --manifest-path userdb/Cargo.toml --message-format=json > clippy-report.json
 
       - name: Upload Clippy report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: clippy-report
           path: clippy-report.json
@@ -120,7 +120,7 @@ jobs:
           npm test -- --coverage --watchAll=false
 
       - name: Upload coverage to artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: frontend-coverage
           path: frontend/coverage/lcov.info

@@ -23,7 +23,7 @@ jobs:
 
       - name: Detect changed directories
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v3.0.2 # Pinned to a specific v3 patch version
         with:
           filters: |
             userdb:
