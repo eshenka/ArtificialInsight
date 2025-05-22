@@ -96,8 +96,9 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: webui/package-lock.json # Or webui/yarn.lock if you use Yarn
+          # cache: 'npm' # Убрано для отключения кэширования npm
+          # cache-dependency-path: webui/package-lock.json # Убрано, так как кэширование отключено
+    
 
       - name: Install dependencies in webui
         working-directory: webui # Explicitly set for this step
