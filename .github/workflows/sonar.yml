@@ -77,15 +77,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: webui/package-lock.json # Or webui/yarn.lock if you use Yarn
 
-      - name: Install dependencies
-        run: ll | npm install
-
+      - name: List files and Install dependencies
+        run: |
+          ls -la # More standard command than ll
+          npm install
+  
       - name: Lint React code
         id: eslint_report
         run: npm run lint # Assumes "lint" script in package.json generates eslint-report.json
