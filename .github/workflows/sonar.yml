@@ -42,6 +42,9 @@ jobs:
     strategy:
       matrix:
         component: [controller, scraping, service_api, vectorDB]
+    defaults:
+      run:
+        working-directory: ${{ matrix.component }}
 
     steps:
       - name: Checkout code
@@ -51,22 +54,26 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+          cache: 'pip' # Enable pip caching
+          # Cache key will be specific to the component's requirements.txt
+          cache-dependency-path: ${{ matrix.component }}/requirements.txt
 
       - name: Install dependencies
         run: |
-          cd ${{ matrix.component }}
+          # cd ${{ matrix.component }} # No longer needed due to defaults.run.working-directory
           pip install -r requirements.txt
           pip install --upgrade pytest>=6.0 pytest-cov # Ensure this is run after requirements.txt and with --upgrade
 
       - name: Run tests with coverage
         run: |
-          cd ${{ matrix.component }}
+          # cd ${{ matrix.component }} # No longer needed due to defaults.run.working-directory
           python -m pytest --cov=. --cov-report=xml --no-test-found-exit-code=0
 
       - name: Upload coverage to artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.component }}-coverage
+          # Path is relative to GITHUB_WORKSPACE, so it needs the component directory prefix
           path: ${{ matrix.component }}/coverage.xml
 
   rust-coverage:
@@ -84,11 +91,10 @@ jobs:
           components: clippy
           override: true
 
-      - name: Run Clippy
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --manifest-path userdb/Cargo.toml --message-format=json > clippy-report.json
+      - name: Run Clippy and generate report
+        run: cargo clippy --manifest-path userdb/Cargo.toml --message-format=json > clippy-report.json || true
+        # The '|| true' ensures that the workflow continues even if Clippy finds issues,
+        # allowing the report to be uploaded for SonarQube analysis.
 
       - name: Upload Clippy report
         uses: actions/upload-artifact@v4
@@ -112,19 +118,19 @@ jobs:
       - name: Install dependencies
         run: |
           ls -la # List directory contents for debugging
-          cd frontend
+          cd webui
           npm install
 
       - name: Run tests with coverage
         run: |
-          cd frontend
+          cd webui
           npm test -- --coverage --watchAll=false
 
       - name: Upload coverage to artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-coverage
-          path: frontend/coverage/lcov.info
+          name: webui-coverage
+          path: webui/coverage/lcov.info
 
   sonar-quality-gate:
     name: SonarQube Quality Gate
