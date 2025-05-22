@@ -1,0 +1,143 @@
+name: SonarQube Analysis
+
+on:
+  push:
+    branches: [main, production]
+  pull_request:
+    branches: [main, production]
+  workflow_dispatch:
+
+jobs:
+  sonar:
+    name: SonarQube Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # Настройка SonarQube Scanner
+      - name: Setup SonarQube Scanner
+        uses: SonarSource/sonarqube-scan-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=ArtificialInsight
+            -Dsonar.projectName=ArtificialInsight
+            -Dsonar.sources=.
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/target/**,**/*.pb.go,**/*.proto
+            -Dsonar.python.coverage.reportPaths=**/coverage.xml
+            -Dsonar.javascript.lcov.reportPaths=**/lcov.info
+            -Dsonar.rust.clippy.reportPaths=**/clippy-report.json
+            -Dsonar.sourceEncoding=UTF-8
+
+  python-coverage:
+    name: Python Coverage
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [controller, scraping, service_api, vectorDB]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd ${{ matrix.component }}
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run tests with coverage
+        run: |
+          cd ${{ matrix.component }}
+          pytest --cov=. --cov-report=xml
+
+      - name: Upload coverage to artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.component }}-coverage
+          path: ${{ matrix.component }}/coverage.xml
+
+  rust-coverage:
+    name: Rust Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+          override: true
+
+      - name: Run Clippy
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --manifest-path userdb/Cargo.toml --message-format=json > clippy-report.json
+
+      - name: Upload Clippy report
+        uses: actions/upload-artifact@v3
+        with:
+          name: clippy-report
+          path: clippy-report.json
+
+  react-coverage:
+    name: React Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm install
+
+      - name: Run tests with coverage
+        run: |
+          cd frontend
+          npm test -- --coverage --watchAll=false
+
+      - name: Upload coverage to artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/lcov.info
+
+  sonar-quality-gate:
+    name: SonarQube Quality Gate
+    needs: [sonar]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check Quality Gate
+        uses: SonarSource/sonarqube-quality-gate-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          scanMetadataReportFile: .scannerwork/report-task.txt
+          # Не заставляем CI/CD прерываться, если Quality Gate не проходит
+          # В реальном проекте можно установить true для строгого контроля качества
+          fail_if_gate_not_green: false
