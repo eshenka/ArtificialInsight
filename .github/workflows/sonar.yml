@@ -105,16 +105,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: List root directory contents
+        run: ls -la
+        working-directory: ${{ github.workspace }} # Run at the root
+
+      - name: List webui directory contents
+        run: ls -la webui || echo "webui directory not found or ls failed"
+        working-directory: ${{ github.workspace }} # Run at the root, list webui
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm' # Enable npm caching
-          cache-dependency-path: webui/package-lock.json # or webui/yarn.lock
+          # Verify this path. If you use yarn, it should be 'webui/yarn.lock'.
+          # If using pnpm, it should be 'webui/pnpm-lock.yaml'.
+          # Check the output of the 'List webui directory contents' step above.
+          cache-dependency-path: webui/package-lock.json
 
       - name: Install dependencies
         run: |
-          ls -la # List directory contents for debugging (can be removed after confirming path)
+          # ls -la # This was for debugging 'cd webui', removed as 'cd' is commented.
           # cd webui # No longer needed due to defaults.run.working-directory
           npm install
 
