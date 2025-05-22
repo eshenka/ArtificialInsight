@@ -2,9 +2,9 @@ name: SonarQube Analysis
 
 on:
   push:
-    branches: [main, production]
+    branches: [main, production, dev, dev-sonar]
   pull_request:
-    branches: [main, production]
+    branches: [main, production, dev]
   workflow_dispatch:
 
 jobs:
