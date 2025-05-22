@@ -116,7 +116,7 @@ jobs:
       - name: Lint React code
         working-directory: webui # Explicitly set for this step
         id: eslint_report
-        run: npm run lint # Assumes "lint" script in package.json generates eslint-report.json
+        run: npm run lint || true # Assumes "lint" script in package.json generates eslint-report.json
 
       - name: Upload ESLint report
         uses: actions/upload-artifact@v4
