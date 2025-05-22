@@ -133,7 +133,7 @@ jobs:
             -Dsonar.sources=.
             -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/target/**,**/*.pb.go,**/*.proto
             -Dsonar.rust.clippy.reportPaths=clippy-report.json
-            -Dsonar.eslint.reportPaths=eslint-report.json
+            -Dsonar.eslint.reportPaths=webui/eslint-report.json
             -Dsonar.sourceEncoding=UTF-8
 
   sonar-quality-gate:
