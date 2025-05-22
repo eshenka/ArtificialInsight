@@ -8,35 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  sonar:
-    name: SonarQube Scan
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # Настройка SonarQube Scanner
-      - name: Setup SonarQube Scanner
-        uses: SonarSource/sonarqube-scan-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }} # Assuming you have this secret
-        with:
-          args: >
-            -Dsonar.projectKey=ArtificialInsight
-            -Dsonar.projectName=ArtificialInsight
-            -Dsonar.organization=your-organization-key # Replace with your actual SonarCloud organization key
-            -Dsonar.sources=.
-            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/target/**,**/*.pb.go,**/*.proto
-            -Dsonar.python.coverage.reportPaths=**/coverage.xml
-            -Dsonar.rust.clippy.reportPaths=**/clippy-report.json
-            -Dsonar.sourceEncoding=UTF-8
-
-  python-coverage:
-    name: Python Coverage # Consider renaming this job to "Python Syntax Check" for clarity
+  python-syntax-check: # Renamed from python-coverage
+    name: Python Syntax Check # Renamed
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -53,25 +26,22 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          cache: 'pip' # Enable pip caching
-          # Cache key will be specific to the component's requirements.txt
+          cache: 'pip'
           cache-dependency-path: ${{ matrix.component }}/requirements.txt
 
       - name: Install dependencies
         run: |
-          # cd ${{ matrix.component }} # No longer needed due to defaults.run.working-directory
           pip install -r requirements.txt
-          # pip install --upgrade pytest>=6.0 pytest-cov # Removed pytest and pytest-cov installation
 
       - name: Check Python syntax
         run: |
-          # cd ${{ matrix.component }} # No longer needed due to defaults.run.working-directory
           python -m compileall -q .
 
-  rust-coverage:
-    name: Rust Coverage
+  rust-clippy-analysis: # Renamed from rust-coverage
+    name: Rust Clippy Analysis # Renamed
     runs-on: ubuntu-latest
-
+    outputs:
+      clippy_report_generated: steps.clippy_report.outcome == 'success'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -84,19 +54,20 @@ jobs:
           override: true
 
       - name: Run Clippy and generate report
+        id: clippy_report
         run: cargo clippy --manifest-path userdb/Cargo.toml --message-format=json > clippy-report.json || true
-        # The '|| true' ensures that the workflow continues even if Clippy finds issues,
-        # allowing the report to be uploaded for SonarQube analysis.
 
       - name: Upload Clippy report
         uses: actions/upload-artifact@v4
         with:
-          name: clippy-report
+          name: clippy-report-artifact
           path: clippy-report.json
 
-  react-coverage: # Consider renaming this job to "React Linting" for clarity
-    name: React Coverage # Consider renaming this to "React Linting"
+  react-eslint-analysis: # Renamed from react-coverage
+    name: React ESLint Analysis # Renamed
     runs-on: ubuntu-latest
+    outputs:
+      eslint_report_generated: steps.eslint_report.outcome == 'success'
     defaults:
       run:
         working-directory: webui
@@ -105,34 +76,65 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: List root directory contents
-        run: ls -la
-        working-directory: ${{ github.workspace }} # Run at the root
-
-      - name: List webui directory contents
-        run: ls -la webui || echo "webui directory not found or ls failed"
-        working-directory: ${{ github.workspace }} # Run at the root, list webui
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm' # Enable npm caching
-          # Verify this path. If you use yarn, it should be 'webui/yarn.lock'.
-          # If using pnpm, it should be 'webui/pnpm-lock.yaml'.
-          # Check the output of the 'List webui directory contents' step above.
-          cache-dependency-path: webui/package-lock.json
+          cache: 'npm'
+          cache-dependency-path: webui/package-lock.json # Or webui/yarn.lock if you use Yarn
 
       - name: Install dependencies
-        run: |
-          # ls -la # This was for debugging 'cd webui', removed as 'cd' is commented.
-          # cd webui # No longer needed due to defaults.run.working-directory
-          npm install
+        run: npm install
 
-      - name: Lint React code # Renamed step
-        run: |
-          # cd webui # No longer needed due to defaults.run.working-directory
-          npm run lint # Assumes a "lint" script in package.json
+      - name: Lint React code
+        id: eslint_report
+        run: npm run lint # Assumes "lint" script in package.json generates eslint-report.json
+
+      - name: Upload ESLint report
+        uses: actions/upload-artifact@v4
+        with:
+          name: eslint-report-artifact
+          path: webui/eslint-report.json # Path to the generated report
+
+  sonar:
+    name: SonarQube Scan
+    runs-on: ubuntu-latest
+    needs: [rust-clippy-analysis, react-eslint-analysis] # Depends on jobs producing reports
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # SonarQube needs full history
+
+      - name: Download Clippy report
+        if: needs.rust-clippy-analysis.outputs.clippy_report_generated == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: clippy-report-artifact
+          # path: . # Download to current dir (default)
+
+      - name: Download ESLint report
+        if: needs.react-eslint-analysis.outputs.eslint_report_generated == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: eslint-report-artifact
+          # path: . # Download to current dir (default)
+
+      - name: Setup SonarQube Scanner
+        uses: SonarSource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=ArtificialInsight
+            -Dsonar.projectName=ArtificialInsight
+            -Dsonar.organization=your-organization-key
+            -Dsonar.sources=.
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/target/**,**/*.pb.go,**/*.proto
+            -Dsonar.rust.clippy.reportPaths=clippy-report.json
+            -Dsonar.eslint.reportPaths=eslint-report.json
+            -Dsonar.sourceEncoding=UTF-8
 
   sonar-quality-gate:
     name: SonarQube Quality Gate
