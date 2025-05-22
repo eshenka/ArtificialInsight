@@ -1,7 +1,7 @@
 fastapi
 uvicorn[standard]
 grpcio
-protobuf==5.27.2
+protobuf
 pydantic
 python-dotenv
 python-multipart
