@@ -23,10 +23,12 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }} # Assuming you have this secret
         with:
           args: >
             -Dsonar.projectKey=ArtificialInsight
             -Dsonar.projectName=ArtificialInsight
+            -Dsonar.organization=your-organization-key # Replace with your actual SonarCloud organization key
             -Dsonar.sources=.
             -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/target/**,**/*.pb.go,**/*.proto
             -Dsonar.python.coverage.reportPaths=**/coverage.xml
