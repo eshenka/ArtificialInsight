@@ -1,7 +1,7 @@
 # gRPC dependencies
 grpcio>=1.71.0
 grpcio-tools>=1.71.0
-protobuf==5.27.2
+protobuf>=5.29.0
 
 # Vector Database
 pymilvus>=2.3.0

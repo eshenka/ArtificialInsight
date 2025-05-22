@@ -3,5 +3,5 @@ grpcio-tools
 requests
 beautifulsoup4
 lxml
-protobuf==5.27.2
+protobuf
 pytest
