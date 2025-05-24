@@ -80,18 +80,12 @@ services:
       context: ..
       dockerfile: docker/llms.Dockerfile
     environment:
-      - OLLAMA_HOST=http://ollama:11434
-      - USE_OLLAMA_FALLBACK=${USE_OLLAMA_FALLBACK:-true}
-      - REQUIRED_OLLAMA_MODELS=${REQUIRED_OLLAMA_MODELS:-gemma3:1b}
-      - AUTO_PULL_OLLAMA_MODELS=${AUTO_PULL_OLLAMA_MODELS:-true}
-      - LLM_KEY=${LLM_KEY:-}
+      - LLM7_BASE_URL=${LLM7_BASE_URL:-https://api.llm7.io/v1}
+      - LLM7_API_KEY=${LLM7_API_KEY:-unused}
       - GRPC_PORT=${LLM_PORT:-50052}
     restart: unless-stopped
-    depends_on:
-      - ollama
     networks:
       - backend-network
-      - ollama-network
 
   # Scraping Service - Web content extraction
   scraping:

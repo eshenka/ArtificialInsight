@@ -11,6 +11,7 @@ WORKDIR /app/llms
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir openai
 
 # Default environment variables
 ENV OLLAMA_HOST="http://ollama:11434"
