@@ -7,16 +7,13 @@ import time
 import threading
 from contextlib import contextmanager
 
-
 from controller.rpc import controller_pb2_grpc
 from controller.controller import ControllerServicer
+from controller.logging_config import setup_logging
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger('controller.server')
+# Set up structured JSON logging
+log_level = os.environ.get('LOG_LEVEL', 'INFO')
+logger = setup_logging('controller', log_level)
 
 
 def load_config():
