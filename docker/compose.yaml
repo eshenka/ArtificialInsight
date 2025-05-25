@@ -23,12 +23,19 @@ services:
     ports:
       - "${WEBUI_PORT:-5173}:80"
     depends_on:
-      - service-api
+      - service-api    
     volumes:
       - ../docker/nginx.conf:/etc/nginx/conf.d/default.conf
     restart: unless-stopped
     networks:
       - frontend-network
+      - elk-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "webui"
 
   # API Gateway Service
   service-api:
@@ -41,11 +48,18 @@ services:
     ports:
       - "${GATEWAY_EXPOSED_PORT:-8000}:${GATEWAY_HTTP_PORT:-8000}"
     depends_on:
-      - controller
+      - controller    
     restart: unless-stopped
     networks:
       - frontend-network
       - backend-network
+      - elk-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "service-api"
 
   #############################################
   # Core Services
@@ -65,7 +79,7 @@ services:
       - LLM_SERVICE=llms:${LLM_PORT:-50052}
       - MAX_WORKERS=${CONTROLLER_MAX_WORKERS:-10}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    restart: unless-stopped
+    restart: unless-stopped    
     depends_on:
       - userdb
       - vectordb
@@ -73,6 +87,13 @@ services:
       - llms
     networks:
       - backend-network
+      - elk-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "controller"
 
   # LLM Service - Manages LLM access
   llms:
@@ -86,12 +107,19 @@ services:
       - AUTO_PULL_OLLAMA_MODELS=${AUTO_PULL_OLLAMA_MODELS:-true}
       - LLM_KEY=${LLM_KEY:-}
       - GRPC_PORT=${LLM_PORT:-50052}
-    restart: unless-stopped
+    restart: unless-stopped    
     depends_on:
       - ollama
     networks:
       - backend-network
       - ollama-network
+      - elk-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "llms"
 
   # Scraping Service - Web content extraction
   scraping:
@@ -103,10 +131,17 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - REQUEST_TIMEOUT=${SCRAPING_TIMEOUT:-30}
       - MAX_WORKERS=${SCRAPING_MAX_WORKERS:-10}
-      - USER_AGENT=${SCRAPING_USER_AGENT:-ArtificialInsightScraper/1.0}
+      - USER_AGENT=${SCRAPING_USER_AGENT:-ArtificialInsightScraper/1.0}    
     restart: unless-stopped
     networks:
       - backend-network
+      - elk-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "scraping"
 
   # Vector Database Service - Document storage and retrieval
   vectordb:
@@ -124,11 +159,18 @@ services:
     restart: unless-stopped
     depends_on:
       - milvus
-      - ollama
+      - ollama    
     networks:
       - backend-network
       - milvus-network
       - ollama-network
+      - elk-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "vectordb"
 
   # User Database Service - User management
   userdb:
@@ -140,12 +182,19 @@ services:
       - USERDB_ADDR=0.0.0.0
       - USERDB_PORT=${USERDB_PORT:-2780}
       - RUST_LOG=${LOG_LEVEL:-info}
-    restart: unless-stopped
+    restart: unless-stopped    
     depends_on:
       - postgres
     networks:
       - backend-network
       - postgres-network
+      - elk-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "userdb"
 
   #############################################
   # Backend Dependencies
@@ -242,7 +291,7 @@ services:
       - milvus-network
     attach: false
 
-  # Attu - Milvus administration tool
+  # Attu - Milvus administration tool  
   attu:
     image: zilliz/attu:v2.5.6
     environment:
@@ -261,6 +310,104 @@ services:
       timeout: 10s
       retries: 3
 
+  #############################################
+  # ELK Stack - Logging Infrastructure
+  #############################################
+
+  # Elasticsearch - Log storage and search
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
+    restart: unless-stopped
+    networks:
+      - elk-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5 
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: logstash
+    volumes:
+      - ../elk/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ../elk/logstash/pipeline:/usr/share/logstash/pipeline:ro
+    ports:
+      - "${LOGSTASH_PORT:-5044}:5044"
+      - "${LOGSTASH_UDP_PORT:-5000}:5000/udp"
+    environment:
+      - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+    networks:
+      - elk-network
+      - backend-network
+  # Filebeat - Log collection and forwarding
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: filebeat
+    user: root
+    volumes:
+      - ../elk/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: filebeat -e -strict.perms=false
+    depends_on:
+      - logstash
+    restart: unless-stopped
+    networks:
+      - elk-network
+
+  # Kibana - Log visualization and dashboards
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: kibana
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+    networks:
+      - elk-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ELK Setup - Automatic configuration script
+  elk-setup:
+    build:
+      context: ../elk
+      dockerfile: ../docker/elk-setup.Dockerfile
+    container_name: elk-setup
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - KIBANA_URL=http://kibana:5601
+      - LOGSTASH_URL=http://logstash:9600
+      - ELK_SETUP_MAX_RETRIES=30
+      - ELK_SETUP_RETRY_DELAY=10
+    depends_on:
+      - elasticsearch
+      - kibana
+      - logstash
+    restart: "no"
+    networks:
+      - elk-network    
+    volumes:
+      - ../elk/kibana/dashboards:/usr/share/kibana/dashboards:ro
+
 #############################################
 # Networks
 #############################################
@@ -274,6 +421,8 @@ networks:
   ollama-network:
     driver: bridge
   milvus-network:
+    driver: bridge
+  elk-network:
     driver: bridge
 
 #############################################
@@ -289,6 +438,8 @@ volumes:
   etcd_data:
     driver: local
   minio_data:
+    driver: local
+  elasticsearch_data:
     driver: local
 
 # Environment Variable Configuration:
@@ -335,6 +486,12 @@ volumes:
 # Attu Configuration:
 # - ATTU_PORT: Port to expose the Attu UI (default: 8000)
 # - ATTU_LOG_LEVEL: Logging level for Attu (default: info)
+#
+# ELK Stack Configuration:
+# - ELASTICSEARCH_PORT: Port to expose Elasticsearch (default: 9200)
+# - LOGSTASH_PORT: Port for Logstash beats input (default: 5044)
+# - LOGSTASH_UDP_PORT: Port for Logstash UDP input (default: 5000)
+# - KIBANA_PORT: Port to expose Kibana (default: 5601)
 #
 # General Configuration:
 # - LOG_LEVEL: Logging level for all services (default: INFO)

@@ -42,6 +42,17 @@ Provides access to various large language models:
 - Features automatic fallback to locally-hosted Ollama models
 - Handles context-aware prompt generation
 
+### ELK Stack - Centralized Logging
+A complete logging infrastructure for monitoring and debugging:
+- **Elasticsearch**: Stores and indexes all service logs
+- **Logstash**: Processes and transforms log data from microservices
+- **Kibana**: Provides visualization dashboards and log analysis tools
+- **Structured JSON Logging**: All services output structured logs for easy analysis
+- **Real-time Monitoring**: Track service health, performance, and errors
+- **Pre-configured Dashboards**: Ready-to-use visualizations for common metrics
+
+Access Kibana at http://localhost:5601 to view logs and dashboards.
+
 ## Getting Started
 
 ### Prerequisites
@@ -121,6 +132,11 @@ The Docker Compose deployment can be configured using environment variables in t
 | `POSTGRES_PASSWORD` | PostgreSQL password | `password` |
 | `POSTGRES_USER` | PostgreSQL username | `postgres` |
 | `POSTGRES_DB` | PostgreSQL database name | `aiusers` |
+| **ELK Stack Configuration** |
+| `ELASTICSEARCH_PORT` | Port to expose Elasticsearch | `9200` |
+| `LOGSTASH_PORT` | Port for Logstash beats input | `5044` |
+| `LOGSTASH_UDP_PORT` | Port for Logstash UDP input | `5000` |
+| `KIBANA_PORT` | Port to expose Kibana | `5601` |
 | **General Configuration** |
 | `LOG_LEVEL` | Logging level for all services | `INFO` |
 
@@ -157,6 +173,55 @@ All docker-compose commands should be run from the `docker` directory:
   cd docker
   docker-compose up -d --build
   ```
+
+#### ELK Stack - Logging Management
+
+ArtificialInsight includes a complete ELK (Elasticsearch, Logstash, Kibana) stack for centralized logging and monitoring:
+
+- **Start only the ELK stack:**
+  ```powershell
+  cd docker
+  .\elk-manage.ps1 start
+  ```
+
+- **Check ELK stack health:**
+  ```powershell
+  cd docker
+  .\elk-manage.ps1 health
+  ```
+
+- **Setup ELK stack (first time):**
+  ```powershell
+  cd docker
+  .\elk-manage.ps1 setup
+  ```
+
+- **Send test logs:**
+  ```powershell
+  cd docker
+  .\elk-manage.ps1 test
+  ```
+
+- **View ELK logs:**
+  ```powershell
+  cd docker
+  .\elk-manage.ps1 logs
+  ```
+
+**Access URLs:**
+- Kibana Dashboard: http://localhost:5601
+- Elasticsearch API: http://localhost:9200
+- Logstash API: http://localhost:9600
+
+**Log Features:**
+- Structured JSON logging from all microservices
+- Real-time log aggregation and processing
+- Pre-configured dashboards for service monitoring
+- Automatic log rotation and retention
+- Search and filtering capabilities
+- Performance and error analytics
+
+See `docker/ELK_README.md` for detailed logging configuration and troubleshooting.
 
 #### Option 2: Manual Installation
 
