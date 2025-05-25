@@ -5,6 +5,13 @@ from fastapi import FastAPI, HTTPException, Header, Depends, Form # Added Form
 from pydantic import BaseModel, ValidationError, Field # Added Field for potential future use
 from typing import Annotated
 
+from logging_config import setup_logging
+
+# Set up structured JSON logging
+import os
+log_level = os.environ.get('LOG_LEVEL', 'INFO')
+logger = setup_logging('service-api', log_level)
+
 # Assuming rpc bindings are in the 'rpc' subdirectory relative to this file's location
 # Adjust the import path if your structure is different
 try:
