@@ -113,16 +113,16 @@ services:
       - SERVICE_HOST=0.0.0.0
       - SERVICE_PORT=${VECTORDB_PORT:-50051}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - OLLAMA_HOST=${VECTORDB_OLLAMA_HOST:-http://ollama:11434}
-      - OLLAMA_MODELS=${VECTORDB_OLLAMA_MODELS:-nomic-embed-text}
+      # - OLLAMA_HOST=${VECTORDB_OLLAMA_HOST:-http://ollama:11434}
+      # - OLLAMA_MODELS=${VECTORDB_OLLAMA_MODELS:-nomic-embed-text}
     restart: unless-stopped
     depends_on:
       - milvus
-      - ollama
+      # - ollama
     networks:
       - backend-network
       - milvus-network
-      - ollama-network
+      # - ollama-network
 
   # User Database Service - User management
   userdb:
@@ -164,13 +164,13 @@ services:
       - postgres-network
 
   # Ollama - Local LLM provider
-  ollama:
-    image: ollama/ollama:latest
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
-    networks:
-      - ollama-network
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   restart: unless-stopped
+  #   networks:
+  #     - ollama-network
 
   # Milvus - Vector database components
   etcd:
