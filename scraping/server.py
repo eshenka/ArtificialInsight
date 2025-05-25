@@ -17,8 +17,11 @@ import common_pb2
 import scraping_pb2
 import scraping_pb2_grpc
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+from logging_config import setup_logging
+
+# Set up structured JSON logging
+log_level = os.environ.get('LOG_LEVEL', 'INFO')
+logger = setup_logging('scraping', log_level)
 
 class ScraperError(Exception):
     """Base class for scraper exceptions."""
