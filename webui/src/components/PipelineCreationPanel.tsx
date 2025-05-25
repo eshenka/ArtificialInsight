@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { createPipeline, ScrapeRules } from '../api/api';
+import { createPipeline, getJobStatus, ScrapeRules } from '../api/api';
 
 interface PipelineCreationPanelProps {
   onPipelineCreated: (token: string) => void;
@@ -25,6 +25,8 @@ interface FormData {
 const PipelineCreationPanel: React.FC<PipelineCreationPanelProps> = ({ onPipelineCreated }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [jobStatus, setJobStatus] = useState<string | null>(null);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   
   const { register, handleSubmit, control, formState: { errors } } = useForm<FormData>({
     defaultValues: {
@@ -43,11 +45,49 @@ const PipelineCreationPanel: React.FC<PipelineCreationPanelProps> = ({ onPipelin
     useFieldArray({ control, name: 'scrape_patterns' });
     
   const { fields: forbiddenFields, append: appendForbidden, remove: removeForbidden } = 
-    useFieldArray({ control, name: 'forbidden_urls' });
+    useFieldArray({ control, name: 'forbidden_urls' });  // Poll job status
+  useEffect(() => {
+    let intervalId: number;
+    
+    if (currentJobId && isLoading) {
+      intervalId = window.setInterval(async () => {
+        try {
+          const status = await getJobStatus(currentJobId);
+          setJobStatus(status.message);
+          
+          if (status.status === 'completed') {
+            setIsLoading(false);
+            setCurrentJobId(null);
+            if (status.result?.token) {
+              onPipelineCreated(status.result.token);
+            } else {
+              setError('Pipeline created but no token received');
+            }
+          } else if (status.status === 'failed') {
+            setIsLoading(false);
+            setCurrentJobId(null);
+            setError(status.message || 'Pipeline creation failed');
+          }
+        } catch (err: any) {
+          console.error('Error polling job status:', err);
+          setError(err?.message || 'Failed to check job status');
+          setIsLoading(false);
+          setCurrentJobId(null);
+        }
+      }, 2000); // Poll every 2 seconds
+    }
 
+    return () => {
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [currentJobId, isLoading, onPipelineCreated]);
   const onSubmit = async (data: FormData) => {
+    console.log('Form submitted with data:', data);
     setIsLoading(true);
     setError(null);
+    setJobStatus('Submitting pipeline creation request...');
     
     try {
       // Transform the form data into the format expected by the API
@@ -61,6 +101,7 @@ const PipelineCreationPanel: React.FC<PipelineCreationPanelProps> = ({ onPipelin
         forbidden_urls: data.forbidden_urls.map(url => ({ pattern: url.pattern }))
       };
       
+      console.log('Sending pipeline creation request with rules:', rules);
       const response = await createPipeline(
         data.user_name,
         data.description,
@@ -69,23 +110,32 @@ const PipelineCreationPanel: React.FC<PipelineCreationPanelProps> = ({ onPipelin
         rules
       );
       
-      onPipelineCreated(response.token);
+      console.log('Pipeline creation response:', response);
+      setCurrentJobId(response.job_id);
+      setJobStatus(response.message);
+      // Keep isLoading true to start polling
     } catch (err: any) {
-      setError(err?.message || 'Failed to create pipeline');
       console.error('Pipeline creation failed:', err);
-    } finally {
+      setError(err?.message || 'Failed to create pipeline');
       setIsLoading(false);
+      setJobStatus(null);
     }
   };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
       <h2 className="text-xl font-bold mb-6 text-gray-800 dark:text-white">Create RAG Pipeline</h2>
-      
-      {error && (
+        {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
           <strong className="font-bold">Error: </strong>
           <span className="block sm:inline">{error}</span>
+        </div>
+      )}
+      
+      {jobStatus && (
+        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4" role="status">
+          <strong className="font-bold">Status: </strong>
+          <span className="block sm:inline">{jobStatus}</span>
         </div>
       )}
       
@@ -301,14 +351,13 @@ const PipelineCreationPanel: React.FC<PipelineCreationPanelProps> = ({ onPipelin
             type="submit"
             disabled={isLoading}
             className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
+          >            {isLoading ? (
               <span className="flex items-center">
                 <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Creating Pipeline...
+                {jobStatus || 'Creating Pipeline...'}
               </span>
             ) : (
               'Create Pipeline'

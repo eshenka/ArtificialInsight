@@ -24,18 +24,32 @@ export interface PipelineResponse {
   token: string;
 }
 
+export interface JobResponse {
+  job_id: string;
+  message: string;
+}
+
+export interface JobStatusResponse {
+  job_id: string;
+  status: string;
+  message: string;
+  result?: {
+    token?: string;
+  };
+}
+
 export interface AnswerResponse {
   answer: string;
 }
 
-// Create a new pipeline
+// Create a new pipeline (async with job tracking)
 export async function createPipeline(
   user_name: string,
   description: string,
   language: string,
   entry_docs_url: string,
   rules: ScrapeRules
-): Promise<PipelineResponse> {
+): Promise<JobResponse> {
   // Create form data for the request
   const formData = new FormData();
   formData.append('user_name', user_name);
@@ -53,6 +67,50 @@ export async function createPipeline(
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(errorText || `Error creating pipeline: ${response.status}`);
+  }
+  
+  return response.json();
+}
+
+// Create a new pipeline (synchronous - deprecated)
+export async function createPipelineSync(
+  user_name: string,
+  description: string,
+  language: string,
+  entry_docs_url: string,
+  rules: ScrapeRules
+): Promise<PipelineResponse> {
+  // Create form data for the request
+  const formData = new FormData();
+  formData.append('user_name', user_name);
+  formData.append('description', description);
+  formData.append('language', language);
+  formData.append('entry_docs_url', entry_docs_url);
+  formData.append('rules', JSON.stringify(rules));
+  
+  // Send the request
+  const response = await fetch(`${API_BASE_URL}/pipeline/sync`, {
+    method: 'POST',
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || `Error creating pipeline: ${response.status}`);
+  }
+  
+  return response.json();
+}
+
+// Check job status
+export async function getJobStatus(job_id: string): Promise<JobStatusResponse> {
+  const response = await fetch(`${API_BASE_URL}/pipeline/status/${job_id}`, {
+    method: 'GET',
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || `Error fetching job status: ${response.status}`);
   }
   
   return response.json();

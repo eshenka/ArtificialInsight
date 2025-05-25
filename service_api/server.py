@@ -6,6 +6,7 @@ from pydantic import BaseModel, ValidationError, Field # Added Field for potenti
 from typing import Annotated
 
 from logging_config import setup_logging
+from redis_utils import redis_manager
 
 # Set up structured JSON logging
 import os
@@ -52,6 +53,16 @@ class AnswerResponse(BaseModel):
 
 class PipelineResponse(BaseModel):
     token: str
+
+class JobResponse(BaseModel):
+    job_id: str
+    message: str
+
+class JobStatusResponse(BaseModel):
+    job_id: str
+    status: str
+    message: str
+    result: dict | None = None
 
 # --- Pydantic models for parsing rules from JSON string ---
 # These help validate the structure of the JSON string passed in the form
@@ -143,8 +154,84 @@ async def answer_prompt(
         raise HTTPException(status_code=500, detail="Internal server error.")
 
 
-@app.post("/pipeline", response_model=PipelineResponse)
+@app.post("/pipeline", response_model=JobResponse)
 async def create_pipeline(
+    user_name: Annotated[str, Form()],
+    description: Annotated[str, Form()],
+    language: Annotated[str, Form()],
+    entry_docs_url: Annotated[str, Form()],
+    rules_json: Annotated[str, Form(alias="rules")], # Expect 'rules' field to contain JSON string
+):
+    """
+    Creates a new RAG pipeline by queueing the request for asynchronous processing.
+    Accepts application/x-www-form-urlencoded data.
+    The 'rules' field must be a JSON string representing the ScrapeRules structure.
+    Returns a job ID that can be used to check the status of the pipeline creation.
+    """
+    logger.info(f"Received create pipeline request for user: {user_name}")
+
+    try:
+        # Parse and validate the JSON string for rules
+        rules_data = json.loads(rules_json)
+        validated_rules = ScrapeRulesModel.model_validate(rules_data)
+
+        # Prepare job data for Redis queue
+        job_data = {
+            "user_name": user_name,
+            "description": description,
+            "language": language,
+            "entry_docs_url": entry_docs_url,
+            "rules": rules_data  # Store the original JSON data
+        }
+
+        # Enqueue the job
+        job_id = redis_manager.enqueue_pipeline_job(job_data)
+        
+        logger.info(f"Pipeline creation job {job_id} queued for user: {user_name}")
+        return JobResponse(
+            job_id=job_id,
+            message="Pipeline creation job has been queued. Use the job ID to check status."
+        )
+
+    except json.JSONDecodeError:
+        logger.error(f"Failed to decode JSON for 'rules' field for user {user_name}")
+        raise HTTPException(status_code=422, detail="Invalid JSON format in 'rules' form field.")
+    except ValidationError as e:
+         logger.error(f"Invalid structure in 'rules' JSON for user {user_name}: {e}")
+         raise HTTPException(status_code=422, detail=f"Invalid data in 'rules' field: {e}")
+    except Exception as e:
+        logger.exception(f"An unexpected error occurred during pipeline creation for user {user_name}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error.")
+
+
+@app.get("/pipeline/status/{job_id}", response_model=JobStatusResponse)
+async def get_pipeline_status(job_id: str):
+    """
+    Get the status of a pipeline creation job.
+    """
+    try:
+        status_data = redis_manager.get_job_status(job_id)
+        
+        if not status_data:
+            raise HTTPException(status_code=404, detail="Job not found or expired")
+        
+        return JobStatusResponse(
+            job_id=job_id,
+            status=status_data["status"],
+            message=status_data.get("message", ""),
+            result=status_data.get("result")
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error getting status for job {job_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+# Keep the old synchronous endpoint for backward compatibility (but deprecated)
+@app.post("/pipeline/sync", response_model=PipelineResponse, deprecated=True)
+async def create_pipeline_sync(
     user_name: Annotated[str, Form()],
     description: Annotated[str, Form()],
     language: Annotated[str, Form()],
@@ -153,11 +240,10 @@ async def create_pipeline(
     stub: controller_pb2_grpc.ControllerStub = Depends(get_controller_stub)
 ):
     """
-    Creates a new RAG pipeline by forwarding the request to the controller service.
-    Accepts application/x-www-form-urlencoded data.
-    The 'rules' field must be a JSON string representing the ScrapeRules structure.
+    Creates a new RAG pipeline synchronously (DEPRECATED - use /pipeline instead).
+    This endpoint is kept for backward compatibility but may be removed in future versions.
     """
-    logger.info(f"Received create pipeline request for user: {user_name}")
+    logger.warning(f"DEPRECATED: Synchronous pipeline creation used for user: {user_name}")
 
     try:
         # Parse the JSON string for rules

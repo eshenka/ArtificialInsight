@@ -13,9 +13,7 @@ function App() {
   const handlePipelineCreated = (newToken: string) => {
     localStorage.setItem('ragToken', newToken);
     setToken(newToken);
-  };
-
-  return (
+  };return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header />
       
