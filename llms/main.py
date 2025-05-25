@@ -6,7 +6,6 @@ import logging
 import os
 from typing import List, Dict, Any, Optional
 
-
 import llms_pb2
 import llms_pb2_grpc
 
@@ -17,8 +16,11 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 # Import the official Ollama Python client
 import ollama
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from logging_config import setup_logging
+
+# Set up structured JSON logging
+log_level = os.environ.get('LOG_LEVEL', 'INFO')
+logger = setup_logging('llms', log_level)
 
 class LLMService(llms_pb2_grpc.LLMServiceServicer):
     def __init__(self, ollama_host="http://localhost:11434"):
