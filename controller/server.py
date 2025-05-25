@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from controller.rpc import controller_pb2_grpc
 from controller.controller import ControllerServicer
 from controller.logging_config import setup_logging
+from controller.redis_utils import redis_manager
 
 # Set up structured JSON logging
 log_level = os.environ.get('LOG_LEVEL', 'INFO')
@@ -25,6 +26,7 @@ def load_config():
         'VECTORDB_SERVICE': os.environ.get('VECTORDB_SERVICE', 'localhost:50052'),
         'SCRAPING_SERVICE': os.environ.get('SCRAPING_SERVICE', 'localhost:50053'),
         'LLM_SERVICE': os.environ.get('LLM_SERVICE', 'localhost:50054'),
+        'REDIS_URL': os.environ.get('REDIS_URL', 'redis://localhost:6379'),
         'MAX_WORKERS': int(os.environ.get('MAX_WORKERS', '10')),
         # Adding timeout configuration in seconds
         'DEFAULT_TIMEOUT': int(os.environ.get('DEFAULT_TIMEOUT', '30')),  
@@ -90,6 +92,9 @@ def serve():
     controller_servicer = ControllerServicer(config)
     controller_pb2_grpc.add_ControllerServicer_to_server(controller_servicer, server)
     
+    # Start Redis worker for pipeline creation
+    redis_manager.start_worker(controller_servicer.process_pipeline_job)
+    
     server_addr = f"{config['HOST']}:{config['PORT']}"
     server.add_insecure_port(server_addr)
     
@@ -99,8 +104,12 @@ def serve():
     with graceful_exit(server) as stop_event:
         logger.info("Server started successfully")
         
-        while not stop_event.is_set():
-            time.sleep(1)
+        try:
+            while not stop_event.is_set():
+                time.sleep(1)
+        finally:
+            # Stop Redis worker on shutdown
+            redis_manager.stop_worker()
 
 
 if __name__ == '__main__':
