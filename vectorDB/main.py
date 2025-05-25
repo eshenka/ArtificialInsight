@@ -13,8 +13,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import vectordb_pb2
 import vectordb_pb2_grpc
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from vectorDB.logging_config import setup_logging
+
+# Set up structured JSON logging
+log_level = os.environ.get('LOG_LEVEL', 'INFO')
+logger = setup_logging('vectordb', log_level)
 
 import re
 import textwrap
