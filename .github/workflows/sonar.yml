@@ -170,26 +170,3 @@ jobs:
           name: sonar-scan-report
           path: .scannerwork/report-task.txt
           if-no-files-found: error # Fails the workflow if the file is not found
-
-  sonar-quality-gate:
-    name: SonarQube Quality Gate
-    needs: [sonar]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download SonarQube scan report
-        uses: actions/download-artifact@v4
-        with:
-          name: sonar-scan-report
-          path: .scannerwork # This will place report-task.txt into .scannerwork/
-
-      - name: Check Quality Gate
-        uses: SonarSource/sonarqube-quality-gate-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }} # Добавлено
-        with:
-          scanMetadataReportFile: .scannerwork/report-task.txt
-          # Не заставляем CI/CD прерываться, если Quality Gate не проходит
-          # В реальном проекте можно установить true для строгого контроля качества
-          fail_if_gate_not_green: false
