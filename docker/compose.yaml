@@ -108,18 +108,12 @@ services:
       context: ..
       dockerfile: docker/llms.Dockerfile
     environment:
-      - OLLAMA_HOST=http://ollama:11434
-      - USE_OLLAMA_FALLBACK=${USE_OLLAMA_FALLBACK:-true}
-      - REQUIRED_OLLAMA_MODELS=${REQUIRED_OLLAMA_MODELS:-gemma3:1b}
-      - AUTO_PULL_OLLAMA_MODELS=${AUTO_PULL_OLLAMA_MODELS:-true}
-      - LLM_KEY=${LLM_KEY:-}
+      - LLM7_BASE_URL=${LLM7_BASE_URL:-https://api.llm7.io/v1}
+      - LLM_KEY=${LLM_KEY:-unused}
       - GRPC_PORT=${LLM_PORT:-50052}
-    restart: unless-stopped    
-    depends_on:
-      - ollama
+    restart: unless-stopped
     networks:
       - backend-network
-      - ollama-network
       - elk-network
     logging:
       driver: "json-file"
@@ -160,12 +154,10 @@ services:
       - SERVICE_HOST=0.0.0.0
       - SERVICE_PORT=${VECTORDB_PORT:-50051}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - OLLAMA_HOST=${VECTORDB_OLLAMA_HOST:-http://ollama:11434}
-      - OLLAMA_MODELS=${VECTORDB_OLLAMA_MODELS:-nomic-embed-text}
     restart: unless-stopped
     depends_on:
       - milvus
-      - ollama
+
     healthcheck:
       test: ["CMD", "python", "-c", "import socket; s = socket.socket(); s.settimeout(5); result = s.connect_ex(('localhost', 50051)); exit(0 if result == 0 else 1)"]
       interval: 10s
@@ -175,7 +167,6 @@ services:
     networks:
       - backend-network
       - milvus-network
-      - ollama-network
       - elk-network
     logging:
       driver: "json-file"
@@ -245,14 +236,14 @@ services:
     networks:
       - postgres-network
 
-  # Ollama - Local LLM provider
-  ollama:
-    image: ollama/ollama:latest
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
-    networks:
-      - ollama-network
+  # # Ollama - Local LLM provider
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   restart: unless-stopped
+  #   networks:
+  #     - ollama-network
 
   # Milvus - Vector database components
   etcd:
@@ -445,8 +436,6 @@ networks:
     driver: bridge
   postgres-network:
     driver: bridge
-  ollama-network:
-    driver: bridge
   milvus-network:
     driver: bridge
   elk-network:
@@ -457,8 +446,6 @@ networks:
 #############################################
 volumes:
   postgres_data:
-    driver: local
-  ollama_data:
     driver: local
   milvus_data:
     driver: local
