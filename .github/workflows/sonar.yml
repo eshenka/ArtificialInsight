@@ -1,172 +1,28 @@
-name: SonarQube Analysis
+name: sonar
 
 on:
   push:
-    branches: [main, production, dev, dev-sonar]
+    branches:
+      - dev
+      - dev-sonar
+      - main
   pull_request:
-    branches: [main, production, dev]
-  workflow_dispatch:
+    types: [opened, synchronize, reopened]
 
 jobs:
-  python-syntax-check: # Renamed from python-coverage
-    name: Python Syntax Check # Renamed
+  sonarqube:
+    name: SonarQube
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        component: [controller, scraping, service_api, vectorDB]
-    defaults:
-      run:
-        working-directory: ${{ matrix.component }}
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
         with:
-          python-version: '3.11'
-          cache: 'pip'
-          cache-dependency-path: ${{ matrix.component }}/requirements.txt
-
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-
-      - name: Check Python syntax
-        run: |
-          python -m compileall -q .
-
-  rust-clippy-analysis: # Renamed from rust-coverage
-    name: Rust Clippy Analysis # Renamed
-    runs-on: ubuntu-latest
-    outputs:
-      clippy_report_generated: steps.clippy_report.outcome == 'success'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: clippy
-          override: true
-
-      - name: Run Clippy and generate report
-        id: clippy_report
-        run: cargo clippy --manifest-path userdb/Cargo.toml --message-format=json > clippy-report.json || true
-
-      - name: Upload Clippy report
-        uses: actions/upload-artifact@v4
-        with:
-          name: clippy-report-artifact
-          path: clippy-report.json
-
-  react-eslint-analysis: # Renamed from react-coverage
-    name: React ESLint Analysis # Renamed
-    runs-on: ubuntu-latest
-    outputs:
-      eslint_report_generated: steps.eslint_report.outcome == 'success'
-    # Removed job-level defaults for working-directory to be more explicit
-    # defaults:
-    #   run:
-    #     working-directory: webui
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Display directory structure at root
-        run: |
-          echo "Running in $PWD"
-          echo "Listing contents of workspace root:"
-          ls -la
-          echo "Checking for webui directory:"
-          if [ -d "webui" ]; then
-            echo "webui directory exists. Contents:"
-            ls -la webui
-          else
-            echo "ERROR: webui directory does NOT exist at $PWD/webui"
-            # Optionally, fail the job if webui is critical and missing
-            # exit 1 
-          fi
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          # cache: 'npm' # Убрано для отключения кэширования npm
-          # cache-dependency-path: webui/package-lock.json # Убрано, так как кэширование отключено
-    
-
-      - name: Install dependencies in webui
-        working-directory: webui # Explicitly set for this step
-        run: |
-          echo "Current directory for npm install: $(pwd)"
-          echo "Listing contents of webui before npm install:"
-          ls -la
-          echo "Attempting npm install..."
-          npm install
-  
-      - name: Install eslint-plugin-react
-        working-directory: webui # Explicitly set for this step
-        run: npm install eslint-plugin-react@latest
-
-      - name: Lint React code
-        working-directory: webui # Explicitly set for this step
-        id: eslint_report
-        run: npm run lint || true # Assumes "lint" script in package.json generates eslint-report.json
-
-      - name: Upload ESLint report
-        uses: actions/upload-artifact@v4
-        with:
-          name: eslint-report-artifact
-          path: webui/eslint-report.json # Path to the generated report
-      
-  sonar:
-    name: SonarQube Scan
-    runs-on: ubuntu-latest
-    needs: [rust-clippy-analysis, react-eslint-analysis] # Depends on jobs producing reports
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # SonarQube needs full history
-
-      - name: Download Clippy report
-        if: needs.rust-clippy-analysis.outputs.clippy_report_generated == 'success'
-        uses: actions/download-artifact@v4
-        with:
-          name: clippy-report-artifact
-          # path: . # Download to current dir (default)
-
-      - name: Download ESLint report
-        if: needs.react-eslint-analysis.outputs.eslint_report_generated == 'success'
-        uses: actions/download-artifact@v4
-        with:
-          name: eslint-report-artifact
-          # path: . # Download to current dir (default)
-
-      - name: Setup SonarQube Scanner
-        uses: SonarSource/sonarqube-scan-action@master
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
             -Dsonar.projectKey=eshenka_ArtificialInsight
-            -Dsonar.projectName=ArtificialInsight
             -Dsonar.organization=eshenka
-            -Dsonar.sources=.
-            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/target/**,**/*.pb.go,**/*.proto
-            -Dsonar.rust.clippy.reportPaths=clippy-report.json
-            -Dsonar.eslint.reportPaths=webui/eslint-report.json
-            -Dsonar.sourceEncoding=UTF-8
-
-      - name: Upload SonarQube scan report
-        uses: actions/upload-artifact@v4
-        with:
-          name: sonar-scan-report
-          path: .scannerwork/report-task.txt
-          if-no-files-found: error # Fails the workflow if the file is not found
