@@ -187,6 +187,7 @@ jobs:
         uses: SonarSource/sonarqube-quality-gate-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }} # Добавлено
         with:
           scanMetadataReportFile: .scannerwork/report-task.txt
           # Не заставляем CI/CD прерываться, если Quality Gate не проходит
