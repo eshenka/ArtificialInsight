@@ -27,7 +27,7 @@ def load_config():
         'USERDB_SERVICE': os.environ.get('USERDB_SERVICE', 'localhost:50051'),
         'VECTORDB_SERVICE': os.environ.get('VECTORDB_SERVICE', 'localhost:50052'),
         'SCRAPING_SERVICE': os.environ.get('SCRAPING_SERVICE', 'localhost:50053'),
-        'LLM_SERVICE': os.environ.get('LLM_SERVICE', 'localhost:50054'),
+        'LLM_SERVICE': os.environ.get('LLM_SERVICE', 'localhost:50054'),  # Changed back to 50054
         'MAX_WORKERS': int(os.environ.get('MAX_WORKERS', '10')),
         # Adding timeout configuration in seconds
         'DEFAULT_TIMEOUT': int(os.environ.get('DEFAULT_TIMEOUT', '30')),  

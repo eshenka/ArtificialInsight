@@ -62,7 +62,7 @@ services:
       - USERDB_SERVICE=userdb:${USERDB_PORT:-2780}
       - VECTORDB_SERVICE=vectordb:${VECTORDB_PORT:-50051}
       - SCRAPING_SERVICE=scraping:${SCRAPING_PORT:-50051}
-      - LLM_SERVICE=llms:${LLM_PORT:-50052}
+      - LLM_SERVICE=llms:${LLM_PORT:-50054}  # Changed from 50052 to 50054
       - MAX_WORKERS=${CONTROLLER_MAX_WORKERS:-10}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     restart: unless-stopped
@@ -82,7 +82,9 @@ services:
     environment:
       - LLM7_BASE_URL=${LLM7_BASE_URL:-https://api.llm7.io/v1}
       - LLM7_API_KEY=${LLM7_API_KEY:-unused}
-      - GRPC_PORT=${LLM_PORT:-50052}
+      - GRPC_PORT=50054  # Make sure this matches
+    ports:
+      - "50054:50054"  # Map the outside port to the container port
     restart: unless-stopped
     networks:
       - backend-network

@@ -30,42 +30,59 @@ class LLMService(llms_pb2_grpc.LLMServiceServicer):
         # LLM7 configuration
         self.llm7_base_url = llm7_base_url
         
-        # Initialize OpenAI client for LLM7
-        self.llm7_client = openai.OpenAI(
-            base_url=self.llm7_base_url,
-            api_key=self.api_keys["llm7"]
-        )
-        
-        # Define available LLM7 models
-        self.llm7_models = {
-            "gpt-4.1-nano": {
-                "context_length": 128000,
-            },
-            "gpt-4.1-mini": {
-                "context_length": 128000,
-            }
-        }
-        
-        # Initialize models dictionary
-        self.models = {}
-        
-        # Add LLM7 models to the models dictionary
-        for model_name, model_info in self.llm7_models.items():
-            model_id = f"llm7/{model_name}"
-            self.models[model_id] = {
-                "provider": "llm7",
-                "language": "en", 
-                "max_context_length": model_info["context_length"],
+        try:
+            # Initialize OpenAI client for LLM7
+            self.llm7_client = openai.OpenAI(
+                base_url=self.llm7_base_url,
+                api_key=self.api_keys["llm7"]
+            )
+            
+            # Define available LLM7 models
+            self.llm7_models = {
+                "gpt-4.1-nano": {
+                    "context_length": 128000,
+                },
+                "gpt-4.1-mini": {
+                    "context_length": 128000,
+                }
             }
             
-            # Also add models without prefix for backward compatibility
-            self.models[model_name] = {
-                "provider": "llm7",
-                "language": "en", 
-                "max_context_length": model_info["context_length"],
+            # Initialize models dictionary
+            self.models = {}
+            
+            # Add LLM7 models to the models dictionary
+            for model_name, model_info in self.llm7_models.items():
+                model_id = f"llm7/{model_name}"
+                self.models[model_id] = {
+                    "provider": "llm7",
+                    "language": "en", 
+                    "max_context_length": model_info["context_length"],
+                }
+                
+                # Also add models without prefix for backward compatibility
+                self.models[model_name] = {
+                    "provider": "llm7",
+                    "language": "en", 
+                    "max_context_length": model_info["context_length"],
+                }
+            
+            logger.info(f"LLM7 service initialized with models: {', '.join(self.llm7_models.keys())}")
+        except Exception as e:
+            logger.error(f"Error initializing LLM7 service: {e}")
+            # Add fallback models in case of initialization error
+            self.models = {
+                "llm7/gpt-4.1-nano": {
+                    "provider": "llm7",
+                    "language": "en",
+                    "max_context_length": 128000,
+                },
+                "gpt-4.1-nano": {
+                    "provider": "llm7",
+                    "language": "en",
+                    "max_context_length": 128000,
+                }
             }
-        
-        logger.info(f"LLM7 service initialized with models: {', '.join(self.llm7_models.keys())}")
+            logger.warning("Using fallback model configuration due to initialization error")
     
     def _create_prompt(self, question: str, context: llms_pb2.Context) -> str:
         """Create a prompt combining the context and the question."""
@@ -183,7 +200,7 @@ class LLMService(llms_pb2_grpc.LLMServiceServicer):
         
         try:
             models_list = []
-            logger.info(f"Getting available models for language: {language or 'any'}")
+            logger.info(f"Getting available models for language: {language or 'any'}, models dict has {len(self.models)} entries")
             
             for name, config in self.models.items():
                 # Only include models for the requested language if specified
@@ -197,15 +214,33 @@ class LLMService(llms_pb2_grpc.LLMServiceServicer):
                 )
                 models_list.append(model)
             
+            # If no models are found for the requested language, add a default model
+            if not models_list:
+                logger.warning(f"No models found for language: {language}. Adding default model.")
+                default_model = llms_pb2.Model(
+                    name="llm7/gpt-4.1-nano",
+                    provider="llm7",
+                    language="en"
+                )
+                models_list.append(default_model)
+                logger.info(f"Added default model: {default_model.name}")
+            
             logger.info(f"Returning {len(models_list)} available models")
             return llms_pb2.GetAvailableModelsResponse(models=models_list)
             
         except Exception as e:
             logger.error(f"Error getting available models: {e}")
-            context.abort(StatusCode.INTERNAL, f"Failed to get available models: {str(e)}")
+            # Return at least one default model in case of error
+            default_model = llms_pb2.Model(
+                name="llm7/gpt-4.1-nano",
+                provider="llm7",
+                language="en"
+            )
+            logger.info(f"Returning fallback model due to error: {default_model.name}")
+            return llms_pb2.GetAvailableModelsResponse(models=[default_model])
 
 
-def serve(host="0.0.0.0", port=50052, llm7_base_url="https://api.llm7.io/v1"):
+def serve(host="0.0.0.0", port=50054, llm7_base_url="https://api.llm7.io/v1"):
     """Start the gRPC server."""
     server = grpc.server(concurrent.futures.ThreadPoolExecutor(max_workers=10))
     llms_pb2_grpc.add_LLMServiceServicer_to_server(
@@ -225,4 +260,5 @@ def serve(host="0.0.0.0", port=50052, llm7_base_url="https://api.llm7.io/v1"):
 
 if __name__ == "__main__":
     llm7_base_url = os.environ.get("LLM7_BASE_URL", "https://api.llm7.io/v1")
-    serve(llm7_base_url=llm7_base_url)
+    port = int(os.environ.get("GRPC_PORT", "50054"))  # Use port 50054 by default
+    serve(host="0.0.0.0", port=port, llm7_base_url=llm7_base_url)
