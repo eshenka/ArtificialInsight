@@ -146,7 +146,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: eslint-report-artifact
-          # path: . # Download to current dir (default)
+          path: webui # Скачиваем содержимое артефакта в директорию webui
 
       - name: Setup SonarQube Scanner
         uses: SonarSource/sonarqube-scan-action@master
