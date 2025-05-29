@@ -5,6 +5,7 @@ on:
     branches:
       - dev
       - dev-sonar
+      - main
   pull_request:
     types: [opened, synchronize, reopened]
 
