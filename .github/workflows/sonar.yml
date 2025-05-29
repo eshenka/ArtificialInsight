@@ -156,8 +156,8 @@ jobs:
         with:
           args: >
             -Dsonar.projectKey=eshenka_ArtificialInsight
-            -Dsonar.projectName=eshenka
-            -Dsonar.organization=your-organization-key
+            -Dsonar.projectName=ArtificialInsight
+            -Dsonar.organization=eshenka
             -Dsonar.sources=.
             -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/target/**,**/*.pb.go,**/*.proto
             -Dsonar.rust.clippy.reportPaths=clippy-report.json
