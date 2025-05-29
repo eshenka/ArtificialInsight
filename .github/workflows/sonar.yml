@@ -155,8 +155,8 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
-            -Dsonar.projectKey=ArtificialInsight
-            -Dsonar.projectName=ArtificialInsight
+            -Dsonar.projectKey=eshenka_ArtificialInsight
+            -Dsonar.projectName=eshenka
             -Dsonar.organization=your-organization-key
             -Dsonar.sources=.
             -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/target/**,**/*.pb.go,**/*.proto
