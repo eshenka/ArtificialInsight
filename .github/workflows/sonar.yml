@@ -189,3 +189,102 @@ jobs:
           name: sonar-scan-report
           path: .scannerwork/report-task.txt
           if-no-files-found: error # Fails the workflow if the file is not found
+
+  sonar-quality-gate:
+    name: SonarQube Quality Gate Check
+    runs-on: ubuntu-latest
+    needs: sonar
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download SonarQube scan report
+        uses: actions/download-artifact@v4
+        with:
+          name: sonar-scan-report
+          path: .
+
+      - name: Display report-task.txt content
+        run: |
+          echo "Contents of report-task.txt:"
+          cat report-task.txt
+
+      - name: Extract ceTaskId from report
+        id: extract_task_id
+        run: |
+          TASK_ID=$(grep 'ceTaskId=' report-task.txt | cut -d'=' -f2)
+          echo "Extracted Task ID: $TASK_ID"
+          echo "task_id=$TASK_ID" >> $GITHUB_OUTPUT
+
+      - name: Wait for SonarQube analysis to complete
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          TASK_ID="${{ steps.extract_task_id.outputs.task_id }}"
+          echo "Waiting for SonarQube task $TASK_ID to complete..."
+          
+          # Wait for task completion (max 5 minutes)
+          for i in {1..30}; do
+            echo "Checking task status (attempt $i/30)..."
+            RESPONSE=$(curl -s -u "$SONAR_TOKEN:" "https://sonarcloud.io/api/ce/task?id=$TASK_ID")
+            STATUS=$(echo "$RESPONSE" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+            
+            echo "Current status: $STATUS"
+            
+            if [ "$STATUS" = "SUCCESS" ]; then
+              echo "✅ SonarQube analysis completed successfully"
+              break
+            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELED" ]; then
+              echo "❌ SonarQube analysis failed with status: $STATUS"
+              exit 1
+            else
+              echo "⏳ Analysis still in progress, waiting 10 seconds..."
+              sleep 10
+            fi
+          done
+          
+          if [ "$STATUS" != "SUCCESS" ]; then
+            echo "❌ Timeout waiting for SonarQube analysis to complete"
+            exit 1
+          fi
+
+      - name: Check Quality Gate Status
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          echo "Checking Quality Gate status for project: eshenka_ArtificialInsight"
+          
+          # Get Quality Gate status
+          QG_RESPONSE=$(curl -s -u "$SONAR_TOKEN:" \
+            "https://sonarcloud.io/api/qualitygates/project_status?projectKey=eshenka_ArtificialInsight")
+          
+          echo "Quality Gate API Response:"
+          echo "$QG_RESPONSE"
+          
+          # Extract Quality Gate status
+          QG_STATUS=$(echo "$QG_RESPONSE" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+          
+          echo "Quality Gate Status: $QG_STATUS"
+          
+          if [ "$QG_STATUS" = "OK" ]; then
+            echo "✅ Quality Gate PASSED"
+          elif [ "$QG_STATUS" = "ERROR" ]; then
+            echo "❌ Quality Gate FAILED"
+            
+            # Extract failed conditions for better error reporting
+            echo "Failed conditions:"
+            echo "$QG_RESPONSE" | grep -o '"conditions":\[[^]]*\]' || echo "No detailed conditions found"
+            
+            exit 1
+          else
+            echo "⚠️ Quality Gate status unknown: $QG_STATUS"
+            exit 1
+          fi
+
+      - name: Report Quality Gate Results
+        if: always()
+        run: |
+          echo "=== SonarQube Quality Gate Check Complete ==="
+          echo "Project: eshenka_ArtificialInsight"
+          echo "Dashboard: https://sonarcloud.io/dashboard?id=eshenka_ArtificialInsight"
+          echo "For detailed results, visit the SonarCloud dashboard above."
