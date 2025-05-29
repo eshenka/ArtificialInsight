@@ -1,100 +1,101 @@
 <html>
 <head>
-<meta charset="utf-8"/>
-<link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect"/>
-<link as="style" href="https://fonts.googleapis.com/css2?display=swap&amp;family=Inter%3Awght%40400%3B500%3B700%3B900&amp;family=Noto+Sans%3Awght%40400%3B500%3B700%3B900" onload="this.rel='stylesheet'" rel="stylesheet"/>
-<title>Artificial Insight - Playground</title>
-<link href="data:image/x-icon;base64," rel="icon" type="image/x-icon"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<style>
+    <meta charset="utf-8"/>
+    <link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect"/>
+    <link as="style" href="https://fonts.googleapis.com/css2?display=swap&amp;family=Inter%3Awght%40400%3B500%3B700%3B900&amp;family=Noto+Sans%3Awght%40400%3B500%3B700%3B900" onload="this.rel='stylesheet'" rel="stylesheet"/>
+    <title>Artificial Insight - Playground</title>
+    <link href="data:image/x-icon;base64," rel="icon" type="image/x-icon"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <style>
       .code-block {
         font-family: 'Courier New', Courier, monospace;
       }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900" style='font-family: Inter, "Noto Sans", sans-serif;'>
-<div class="relative flex size-full min-h-screen flex-col group/design-root overflow-x-hidden">
-<div class="layout-container flex h-full grow flex-col">
-<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 px-6 sm:px-10 py-4 bg-white shadow-sm">
-<div class="flex items-center gap-3 text-slate-800">
-<div class="size-6 text-blue-600">
-<svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-<path clip-rule="evenodd" d="M24 18.4228L42 11.475V34.3663C42 34.7796 41.7457 35.1504 41.3601 35.2992L24 42V18.4228Z" fill="currentColor" fill-rule="evenodd"></path>
-<path clip-rule="evenodd" d="M24 8.18819L33.4123 11.574L24 15.2071L14.5877 11.574L24 8.18819ZM9 15.8487L21 20.4805V37.6263L9 32.9945V15.8487ZM27 37.6263V20.4805L39 15.8487V32.9945L27 37.6263ZM25.354 2.29885C24.4788 1.98402 23.5212 1.98402 22.646 2.29885L4.98454 8.65208C3.7939 9.08038 3 10.2097 3 11.475V34.3663C3 36.0196 4.01719 37.5026 5.55962 38.098L22.9197 44.7987C23.6149 45.0671 24.3851 45.0671 25.0803 44.7987L42.4404 38.098C43.9828 37.5026 45 36.0196 45 34.3663V11.475C45 10.2097 44.2061 9.08038 43.0155 8.65208L25.354 2.29885Z" fill="currentColor" fill-rule="evenodd"></path>
-</svg>
-</div>
-<h1 class="text-slate-800 text-xl font-bold tracking-tight">Artificial Insight</h1>
-</div>
-<div class="flex items-center gap-4">
-<path d="M140,180a12,12,0,1,1-12-12A12,12,0,0,1,140,180ZM128,72c-22.06,0-40,16.15-40,36v4a8,8,0,0,0,16,0v-4c0-11,10.77-20,24-20s24,9,24,20-10.77,20-24,20a8,8,0,0,0-8,8v8a8,8,0,0,0,16,0v-.72c18.24-3.35,32-17.9,32-35.28C168,88.15,150.06,72,128,72Zm104,56A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"></path>
-</header>
-<main class="flex flex-1 justify-center py-8 px-4 sm:px-6 lg:px-8">
-<div class="layout-content-container flex flex-col max-w-3xl w-full">
-<header class="mb-6">
-<h2 class="text-slate-800 text-3xl font-bold tracking-tight mb-1">Playground</h2>
-<p class="text-slate-500 text-sm">
-                Pipeline Token: <code class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-md text-xs font-mono">e6adc9e2-68f8-47ca-ae13-3283887850ac</code>
-</p>
-</header>
-<div class="bg-white shadow-lg rounded-xl flex-1 flex flex-col overflow-hidden">
-<div class="flex-1 p-6 space-y-6 overflow-y-auto">
-<div class="flex items-end gap-3 max-w-xl">
-<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 shrink-0 border border-slate-200" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA5hKqyvD-xluxhC-owb9Q_EGbaS3fpabywPF_Mk6ycGk6WPVGfiq9i9UoV-QBzTkcECEELqVkPcsBMPxa8s1r_Q3qmZuZ-tZL0ZE_PRf-PdInd1pRA89kmEgCCo0PAM7NQIttWXSdhhpbXa8in6dlsbbkaZK7wFgcWxPM6-idHmArNazi9u5aQF3catn_8ZqzgdpO0ikXmeJbhTok30P6tZxMJqUNovCyK-2umt7v4BvI5n1BvGhOWVJTYbPZ7bSjov4AyADVIF8s");'></div>
-<div class="flex flex-col items-start">
-<p class="text-slate-500 text-xs font-medium mb-0.5">Artificial Insight</p>
-<div class="bg-slate-100 text-slate-700 rounded-lg rounded-bl-none px-4 py-2.5 text-sm">
-                      Hi there! I am your AI assistant. Ask me anything about your documentation.
+    <div class="relative flex size-full min-h-screen flex-col group/design-root overflow-x-hidden">
+        <div class="layout-container flex h-full grow flex-col">
+            <header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 px-6 sm:px-10 py-4 bg-white shadow-sm">
+                <div class="flex items-center gap-3 text-slate-800">
+                    <div class="size-6 text-blue-600">
+                        <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                            <path clip-rule="evenodd" d="M24 18.4228L42 11.475V34.3663C42 34.7796 41.7457 35.1504 41.3601 35.2992L24 42V18.4228Z" fill="currentColor" fill-rule="evenodd"></path>
+                            <path clip-rule="evenodd" d="M24 8.18819L33.4123 11.574L24 15.2071L14.5877 11.574L24 8.18819ZM9 15.8487L21 20.4805V37.6263L9 32.9945V15.8487ZM27 37.6263V20.4805L39 15.8487V32.9945L27 37.6263ZM25.354 2.29885C24.4788 1.98402 23.5212 1.98402 22.646 2.29885L4.98454 8.65208C3.7939 9.08038 3 10.2097 3 11.475V34.3663C3 36.0196 4.01719 37.5026 5.55962 38.098L22.9197 44.7987C23.6149 45.0671 24.3851 45.0671 25.0803 44.7987L42.4404 38.098C43.9828 37.5026 45 36.0196 45 34.3663V11.475C45 10.2097 44.2061 9.08038 43.0155 8.65208L25.354 2.29885Z" fill="currentColor" fill-rule="evenodd"></path>
+                        </svg>
                     </div>
-</div>
-</div>
-</div>
-<div class="border-t border-slate-200 p-4">
-<div class="flex items-center gap-3 @container">
-<input class="form-input flex-1 resize-none rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 bg-white placeholder:text-slate-400 text-sm py-2.5 px-3.5" placeholder="Ask a question..." type="text"/>
-<button class="inline-flex items-center justify-center rounded-lg h-10 px-4 bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
-<span class="hidden @[200px]:inline">Send</span>
-<svg class="inline @[200px]:hidden" fill="currentColor" height="1.2em" viewBox="0 0 256 256" width="1.2em" xmlns="http://www.w3.org/2000/svg"><path class="hidden @[200px]:inline" d="M221.66,133.66l-72,72A8,8,0,0,1,144,208a8,8,0,0,1-5.66-2.34L120,187.31V208a8,8,0,0,1-16,0V152a8,8,0,0,1,8-8h56a8,8,0,0,1,0,16H147.31l18.35,18.34L224,120a8,8,0,0,1,13.66,5.66ZM112,48H56a8,8,0,0,0,0,16H92.69L74.34,82.34A8,8,0,0,0,80,96a8,8,0,0,0,5.66-2.34l72-72A8,8,0,0,0,144,16a8,8,0,0,0-5.66-2.34L120,32V16a8,8,0,0,0-16,0v56a8,8,0,0,0,8,8Z"></path><path class="inline @[200px]:hidden" d="M225.66,122.34,152,48.69V64a8,8,0,0,1-16,0V24a8,8,0,0,1,8-8h40a8,8,0,0,1,0,16H163.31l80,80A8,8,0,0,1,232,133.66,8,8,0,0,1,225.66,122.34ZM104,192v16a8,8,0,0,1-16,0V168a8,8,0,0,1,8-8h40a8,8,0,0,1,0,16H92.69l80,80A8,8,0,1,1,167,242.34L87.66,163A8,8,0,0,1,80,168,8,8,0,0,1,74.34,162.34Z"></path></svg>
-<svg class="inline @[200px]:hidden ml-1.5" fill="currentColor" height="1.2em" viewBox="0 0 256 256" width="1.2em" xmlns="http://www.w3.org/2000/svg"><path d="M221.66,133.66l-72,72A8,8,0,0,1,136,200V160H48a8,8,0,0,1,0-16h88V104a8,8,0,0,1,13.66-5.66l72,72A8,8,0,0,1,221.66,133.66Z"></path></svg>
-</button>
-</div>
-</div>
-</div>
-<section class="mt-10 pt-8 border-t border-slate-200">
-<h3 class="text-slate-800 text-xl font-semibold tracking-tight mb-4">API Documentation</h3>
-<p class="text-slate-600 text-sm mb-6">
-                Integrate ArtificialInsight into your applications using our simple API.
-              </p>
-<div class="space-y-5">
-<div>
-<h4 class="text-slate-700 font-semibold mb-1">Endpoint</h4>
-<div class="bg-slate-100 p-3 rounded-md">
-<code class="code-block text-sm text-slate-700">
-<span class="font-bold text-purple-600">POST</span> /answer
-                    </code>
-</div>
-</div>
-<div>
-<h4 class="text-slate-700 font-semibold mb-1">Authorization</h4>
-<p class="text-sm text-slate-600 mb-1">Include your pipeline token in the Authorization header:</p>
-<div class="bg-slate-100 p-3 rounded-md">
-<code class="code-block text-sm text-slate-700">Authorization: Bearer &lt;PIPELINE_TOKEN&gt;</code>
-</div>
-<p class="text-xs text-slate-500 mt-1.5">Replace <code>&lt;PIPELINE_TOKEN&gt;</code> with your actual token shown above.</p>
-</div>
-<div>
-<h4 class="text-slate-700 font-semibold mb-1">Request Body</h4>
-<p class="text-sm text-slate-600 mb-1">Send a JSON payload with your question:</p>
-<div class="bg-slate-800 p-4 rounded-md overflow-x-auto">
-<pre class="code-block text-sm text-slate-200"><code>{
-  "prompt": "Your question about the documentation..."
-}</code></pre>
-</div>
-</div>
-</div>
-</section>
-</div>
-</main>
-</div>
-</div>
+                    <h1 class="text-slate-800 text-xl font-bold tracking-tight">Artificial Insight</h1>
+                </div>
+                <div class="flex items-center gap-4">
+                    <path d="M140,180a12,12,0,1,1-12-12A12,12,0,0,1,140,180ZM128,72c-22.06,0-40,16.15-40,36v4a8,8,0,0,0,16,0v-4c0-11,10.77-20,24-20s24,9,24,20-10.77,20-24,20a8,8,0,0,0-8,8v8a8,8,0,0,0,16,0v-.72c18.24-3.35,32-17.9,32-35.28C168,88.15,150.06,72,128,72Zm104,56A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"></path>
+                </div>
+            </header>
+            <main class="flex flex-1 justify-center py-8 px-4 sm:px-6 lg:px-8">
+                <div class="layout-content-container flex flex-col max-w-3xl w-full">
+                    <header class="mb-6">
+                        <h2 class="text-slate-800 text-3xl font-bold tracking-tight mb-1">Playground</h2>
+                        <p class="text-slate-500 text-sm">
+                            Pipeline Token: <code class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-md text-xs font-mono">e6adc9e2-68f8-47ca-ae13-3283887850ac</code>
+                        </p>
+                    </header>
+                    <div class="bg-white shadow-lg rounded-xl flex-1 flex flex-col overflow-hidden">
+                        <div class="flex-1 p-6 space-y-6 overflow-y-auto">
+                            <div class="flex items-end gap-3 max-w-xl">
+                                <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 shrink-0 border border-slate-200" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA5hKqyvD-xluxhC-owb9Q_EGbaS3fpabywPF_Mk6ycGk6WPVGfiq9i9UoV-QBzTkcECEELqVkPcsBMPxa8s1r_Q3qmZuZ-tZL0ZE_PRf-PdInd1pRA89kmEgCCo0PAM7NQIttWXSdhhpbXa8in6dlsbbkaZK7wFgcWxPM6-idHmArNazi9u5aQF3catn_8ZqzgdpO0ikXmeJbhTok30P6tZxMJqUNovCyK-2umt7v4BvI5n1BvGhOWVJTYbPZ7bSjov4AyADVIF8s");'></div>
+                                <div class="flex flex-col items-start">
+                                    <p class="text-slate-500 text-xs font-medium mb-0.5">Artificial Insight</p>
+                                    <div class="bg-slate-100 text-slate-700 rounded-lg rounded-bl-none px-4 py-2.5 text-sm">
+                                        Hi there! I am your AI assistant. Ask me anything about your documentation.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="border-t border-slate-200 p-4">
+                            <div class="flex items-center gap-3 @container">
+                                <input class="form-input flex-1 resize-none rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 bg-white placeholder:text-slate-400 text-sm py-2.5 px-3.5" placeholder="Ask a question..." type="text"/>
+                                <button class="inline-flex items-center justify-center rounded-lg h-10 px-4 bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
+                                    <span class="hidden @[200px]:inline">Send</span>
+                                    <svg class="inline @[200px]:hidden" fill="currentColor" height="1.2em" viewBox="0 0 256 256" width="1.2em" xmlns="http://www.w3.org/2000/svg"><path class="hidden @[200px]:inline" d="M221.66,133.66l-72,72A8,8,0,0,1,144,208a8,8,0,0,1-5.66-2.34L120,187.31V208a8,8,0,0,1-16,0V152a8,8,0,0,1,8-8h56a8,8,0,0,1,0,16H147.31l18.35,18.34L224,120a8,8,0,0,1,13.66,5.66ZM112,48H56a8,8,0,0,0,0,16H92.69L74.34,82.34A8,8,0,0,0,80,96a8,8,0,0,0,5.66-2.34l72-72A8,8,0,0,0,144,16a8,8,0,0,0-5.66-2.34L120,32V16a8,8,0,0,0-16,0v56a8,8,0,0,0,8,8Z"></path><path class="inline @[200px]:hidden" d="M225.66,122.34,152,48.69V64a8,8,0,0,1-16,0V24a8,8,0,0,1,8-8h40a8,8,0,0,1,0,16H163.31l80,80A8,8,0,0,1,232,133.66,8,8,0,0,1,225.66,122.34ZM104,192v16a8,8,0,0,1-16,0V168a8,8,0,0,1,8-8h40a8,8,0,0,1,0,16H92.69l80,80A8,8,0,1,1,167,242.34L87.66,163A8,8,0,0,1,80,168,8,8,0,0,1,74.34,162.34Z"></path></svg>
+                                    <svg class="inline @[200px]:hidden ml-1.5" fill="currentColor" height="1.2em" viewBox="0 0 256 256" width="1.2em" xmlns="http://www.w3.org/2000/svg"><path d="M221.66,133.66l-72,72A8,8,0,0,1,136,200V160H48a8,8,0,0,1,0-16h88V104a8,8,0,0,1,13.66-5.66l72,72A8,8,0,0,1,221.66,133.66Z"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <section class="mt-10 pt-8 border-t border-slate-200">
+                        <h3 class="text-slate-800 text-xl font-semibold tracking-tight mb-4">API Documentation</h3>
+                        <p class="text-slate-600 text-sm mb-6">
+                            Integrate ArtificialInsight into your applications using our simple API.
+                        </p>
+                        <div class="space-y-5">
+                            <div>
+                                <h4 class="text-slate-700 font-semibold mb-1">Endpoint</h4>
+                                <div class="bg-slate-100 p-3 rounded-md">
+                                    <code class="code-block text-sm text-slate-700">
+                                        <span class="font-bold text-purple-600">POST</span> /answer
+                                    </code>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="text-slate-700 font-semibold mb-1">Authorization</h4>
+                                <p class="text-sm text-slate-600 mb-1">Include your pipeline token in the Authorization header:</p>
+                                <div class="bg-slate-100 p-3 rounded-md">
+                                    <code class="code-block text-sm text-slate-700">Authorization: Bearer &lt;PIPELINE_TOKEN&gt;</code>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1.5">Replace <code>&lt;PIPELINE_TOKEN&gt;</code> with your actual token shown above.</p>
+                            </div>
+                            <div>
+                                <h4 class="text-slate-700 font-semibold mb-1">Request Body</h4>
+                                <p class="text-sm text-slate-600 mb-1">Send a JSON payload with your question:</p>
+                                <div class="bg-slate-800 p-4 rounded-md overflow-x-auto">
+                                    <pre class="code-block text-sm text-slate-200"><code>{
+                                        "prompt": "Your question about the documentation..."
+                                        }</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </div>
 </body>
 </html>
