@@ -168,6 +168,21 @@ jobs:
             -Dsonar.eslint.reportPaths=webui/eslint-report.json
             -Dsonar.sourceEncoding=UTF-8
 
+      - name: Verify SonarQube scan report exists
+        run: |
+          echo "Checking if .scannerwork/report-task.txt exists..."
+          if [ -f ".scannerwork/report-task.txt" ]; then
+            echo "✅ .scannerwork/report-task.txt found"
+            echo "File size: $(stat -c%s .scannerwork/report-task.txt) bytes"
+            echo "File contents:"
+            cat .scannerwork/report-task.txt
+          else
+            echo "❌ .scannerwork/report-task.txt NOT found"
+            echo "Contents of .scannerwork directory:"
+            ls -la .scannerwork/ || echo "❌ .scannerwork directory does not exist"
+            exit 1
+          fi
+
       - name: Upload SonarQube scan report
         uses: actions/upload-artifact@v4
         with:
