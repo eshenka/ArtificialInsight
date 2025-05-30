@@ -8,58 +8,48 @@ FROM node:18 AS build
 # Set working directory
 WORKDIR /app
 
-# Copy package files and install dependencies
-# COPY webui/package*.json ./
-# RUN npm ci
+# Copy package.json and package-lock.json first for better caching
+COPY webui-new/package*.json ./
 
-# Copy the rest of the application code
-COPY webui-new/ ./
+# Install dependencies
+RUN npm install react-router-dom
 RUN npm install
 
+# Copy the application code
+COPY webui-new/ ./
+
+# Show files for debugging
+RUN ls -la
+
 # Build the application
-# Environment variables can be passed at build time if needed
-# Example: --build-arg API_URL=http://api.example.com
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL:-/api}
 
-# Fix for platform-specific dependencies
-# Clean npm cache and node_modules to ensure we get the right binaries for the container platform
-RUN rm -rf node_modules/.cache
+# Clean npm cache and build
 RUN npm cache clean --force
-RUN npm ci --prefer-offline
-
-# Now build the application
 RUN npm run build
+
+# Show what was built
+RUN ls -la dist/
 
 # Production stage
 FROM nginx:alpine
 
-# Copy the built app to nginx serve directory
-COPY --from=build /app/dist /usr/share/nginx/html
+# Remove default nginx static resources
+RUN rm -rf /usr/share/nginx/html/*
 
-# Копируем только нужные HTML-файлы
-COPY webui-new/cpl.html /usr/share/nginx/html/
-COPY webui-new/pg.html /usr/share/nginx/html/
+# Copy the built app to nginx serve directory
+COPY --from=build /app/dist/ /usr/share/nginx/html/
+
+# For direct HTML file serving
+COPY webui-new/playground.html /usr/share/nginx/html/playground/index.html
+COPY webui-new/create-pipeline.html /usr/share/nginx/html/create-pipeline/index.html
 
 # Copy custom nginx configuration
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Add configuration notes as comments
-# ====================================
-# CONFIGURATION OPTIONS:
-# 
-# Environment Variables:
-# - VITE_API_BASE_URL: The URL of the backend API service (default: /api)
-#   This must be set at build time using --build-arg
-#
-# Ports:
-# - 80: The container exposes port 80 for the web UI
-#
-# Example build command:
-# docker build -t artificialinsight-webui -f docker/webui.Dockerfile --build-arg VITE_API_BASE_URL=/api .
-#
-# Example run command:
-# docker run -p 3000:80 artificialinsight-webui
+# Show what's in the nginx html directory
+RUN ls -la /usr/share/nginx/html/
 
 # Expose port
 EXPOSE 80

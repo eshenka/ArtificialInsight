@@ -40,7 +40,7 @@
                     <div class="bg-white shadow-lg rounded-xl flex-1 flex flex-col overflow-hidden">
                         <div class="flex-1 p-6 space-y-6 overflow-y-auto">
                             <div class="flex items-end gap-3 max-w-xl">
-                                <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 shrink-0 border border-slate-200" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA5hKqyvD-xluxhC-owb9Q_EGbaS3fpabywPF_Mk6ycGk6WPVGfiq9i9UoV-QBzTkcECEELqVkPcsBMPxa8s1r_Q3qmZuZ-tZL0ZE_PRf-PdInd1pRA89kmEgCCo0PAM7NQIttWXSdhhpbXa8in6dlsbbkaZK7wFgcWxPM6-idHmArNazi9u5aQF3catn_8ZqzgdpO0ikXmeJbhTok30P6tZxMJqUNovCyK-2umt7v4BvI5n1BvGhOWVJTYbPZ7bSjov4AyADVIF8s");'></div>
+                                <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 shrink-0 border border-slate-200" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA5hKqyvD-xluxhC-owb9Q_EGbaS3fpabywPF_Mk6ycGk6WPVGfiq9i9UoV-QBzTkcECEELqVkPcsBMPxa8s1r_Q3qmZuZ-tZL0ZE_PRf-PdInd1pRA89kmEgCCo0PAM7NQIttWXSdhhpbXa8in6dlsbbkaZK7wFgcWxPM6-idHmArNazi9u5aQF3catn_8ZqzgdpO0ikXmeJbhTok30P6tZxMJqUNovCyK-2umt7v4BvI5n1BvGhOWVJTYbPZYML2a9fH0aMQ");'></div>
                                 <div class="flex flex-col items-start">
                                     <p class="text-slate-500 text-xs font-medium mb-0.5">Artificial Insight</p>
                                     <div class="bg-slate-100 text-slate-700 rounded-lg rounded-bl-none px-4 py-2.5 text-sm">
@@ -97,5 +97,167 @@
             </main>
         </div>
     </div>
+    <script>
+    // Get DOM elements
+    const chatContainer = document.querySelector('.flex-1.p-6.space-y-6.overflow-y-auto');
+    const inputField = document.querySelector('input[placeholder="Ask a question..."]');
+    const sendButton = document.querySelector('button.inline-flex.items-center.justify-center.rounded-lg');
+    
+    // Display token from localStorage on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedToken = localStorage.getItem('ragToken');
+        console.log("Token from localStorage:", savedToken);
+        
+        if (savedToken) {
+            // Update the token display in the UI
+            const tokenEl = document.querySelector('code.bg-slate-100.text-slate-700');
+            if (tokenEl) {
+                tokenEl.textContent = savedToken;
+                console.log("Token updated in UI");
+            } else {
+                console.error("Token element not found in UI");
+            }
+        } else {
+            console.warn("No token found in localStorage");
+        }
+        
+        // The welcome message is already in the HTML
+    });
+    
+    // Get the pipeline token from the UI
+    const getToken = () => {
+        // Try localStorage first (most reliable)
+        const savedToken = localStorage.getItem('ragToken');
+        if (savedToken) return savedToken;
+        
+        // Fallback to UI element
+        const tokenEl = document.querySelector('code.bg-slate-100.text-slate-700');
+        const uiToken = tokenEl ? tokenEl.textContent.trim() : null;
+        
+        if (uiToken && uiToken !== 'e6adc9e2-68f8-47ca-ae13-3283887850ac') {
+            return uiToken;
+        }
+        
+        return null; // No valid token found
+    };
+    
+    // Function to add message to chat
+    function addMessage(content, isUser = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'flex items-end gap-3 ' + (isUser ? 'flex-row-reverse ml-auto max-w-xl' : 'max-w-xl');
+        
+        let avatarHtml = '';
+        
+        if (isUser) {
+            avatarHtml = `<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 shrink-0 border border-slate-200" 
+                style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA5hKqyvD-xluxhC-owb9Q_EGbaS3fpabywPF_Mk6ycGk6WPVGfiq9i9UoV-QBzTkcECEELqVkPcsBMPxa8s1r_Q3qmZuZ-tZL0ZE_PRf-PdInd1pRA89kmEgCCo0PAM7NQIttWXSdhhpbXa8in6dlsbbkaZK7wFgcWxPM6-idHmArNazi9u5aQF3catn_8ZqzgdpO0ikXmeJbhTok30P6tZxMJqUNovCyK-2umt7v4BvI5n1BvGhOWVJTYbPZYML2a9fH0aMQ");'></div>`;
+        } else {
+            avatarHtml = `<div class="size-8 aspect-square shrink-0 rounded-full bg-blue-600 flex items-center justify-center text-white">
+                <svg class="size-4" fill="currentColor" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg"><path d="M128,68a36,36,0,1,0,36,36A36,36,0,0,0,128,68Zm0,56a20,20,0,1,1,20-20A20,20,0,0,1,128,124Zm0,40a92.14,92.14,0,0,0-69.47,31.71A8,8,0,0,0,72,212h112a8,8,0,0,0,13.47-16.29A92.14,92.14,0,0,0,128,164Zm-56,32a76.18,76.18,0,0,1,112,0Z"></path></svg>
+            </div>`;
+        }
+        
+        const contentHtml = `
+            <div class="flex flex-col items-${isUser ? 'end' : 'start'}">
+                <p class="text-slate-500 text-xs font-medium mb-0.5">${isUser ? 'You' : 'Artificial Insight'}</p>
+                <div class="bg-${isUser ? 'blue-600 text-white' : 'slate-100 text-slate-700'} rounded-lg rounded-${isUser ? 'br' : 'bl'}-none px-4 py-2.5 text-sm">
+                    ${content}
+                </div>
+            </div>
+        `;
+        
+        messageDiv.innerHTML = isUser ? contentHtml + avatarHtml : avatarHtml + contentHtml;
+        chatContainer.appendChild(messageDiv);
+        
+        // Scroll to bottom
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    // Function to send message to API and get response
+    async function sendMessage() {
+        const token = getToken();
+        console.log("Using token:", token);
+        
+        if (!token) {
+            alert('No pipeline token found. Please create a pipeline first.');
+            return;
+        }
+        
+        const userPrompt = inputField.value.trim();
+        if (!userPrompt) return;
+        
+        // Add user message to chat
+        addMessage(userPrompt, true);
+        
+        // Clear input
+        inputField.value = '';
+        
+        // Disable send button and show loading state
+        const originalButtonHtml = sendButton.innerHTML;
+        sendButton.innerHTML = `
+            <svg class="animate-spin h-5 w-5 mr-1" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="hidden @[200px]:inline">Loading...</span>
+        `;
+        sendButton.disabled = true;
+        
+        try {
+            // Call the API
+            const response = await fetch('http://localhost:5173/api/answer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ prompt: userPrompt })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Server responded with status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Add AI response to chat
+            addMessage(data.answer);
+            
+        } catch (error) {
+            console.error('Error getting answer:', error);
+            addMessage(`Error: ${error.message}. Please try again.`);
+        } finally {
+            // Reset send button
+            sendButton.innerHTML = originalButtonHtml;
+            sendButton.disabled = false;
+        }
+    }
+    
+    // Add event listeners
+    sendButton.addEventListener('click', sendMessage);
+    
+    // Also listen for Enter key in the input field
+    inputField.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    // Initialize with a welcome message
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get token from localStorage if available
+        const savedToken = localStorage.getItem('ragToken');
+        if (savedToken) {
+            // Update the token display in the UI
+            const tokenEl = document.querySelector('code.bg-slate-100.text-slate-700');
+            if (tokenEl) {
+                tokenEl.textContent = savedToken;
+            }
+        }
+        
+        // The welcome message is already in the HTML
+    });
+</script>
 </body>
 </html>

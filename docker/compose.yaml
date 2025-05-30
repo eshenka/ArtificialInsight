@@ -21,7 +21,7 @@ services:
       args:
         - VITE_API_BASE_URL=${VITE_API_BASE_URL:-/api}
     ports:
-      - "${WEBUI_PORT:-5173}:80"
+      - "${WEBUI_PORT:-5173}:80"  # This maps external port 5173 to container port 80
     depends_on:
       - service-api    
     volumes:
