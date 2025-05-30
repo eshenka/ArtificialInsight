@@ -13,7 +13,7 @@ WORKDIR /app
 # RUN npm ci
 
 # Copy the rest of the application code
-COPY webui/ ./
+COPY webui-new/ ./
 RUN npm install
 
 # Build the application
@@ -36,6 +36,10 @@ FROM nginx:alpine
 
 # Copy the built app to nginx serve directory
 COPY --from=build /app/dist /usr/share/nginx/html
+
+# Копируем только нужные HTML-файлы
+COPY webui-new/cpl.html /usr/share/nginx/html/
+COPY webui-new/pg.html /usr/share/nginx/html/
 
 # Copy custom nginx configuration
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
