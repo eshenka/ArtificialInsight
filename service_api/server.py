@@ -111,7 +111,7 @@ async def answer_prompt(
         raise HTTPException(status_code=401, detail="Authorization header is missing")
 
     # The header might contain "Bearer <token>", adjust if needed. Assuming it's just the token for now.
-    token = authorization # If it's "Bearer <token>", use: token = authorization.split(" ")[1] if " " in authorization else None
+    token = authorization.split(" ")[1] if " " in authorization else None
 
     if not token:
          logger.warning("Invalid or empty token in Authorization header")
