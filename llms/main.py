@@ -13,8 +13,8 @@ import requests
 import json
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-# Import the official Ollama Python client
-import ollama
+# Import OpenAI client for LLM7
+import openai
 
 from logging_config import setup_logging
 
@@ -23,122 +23,98 @@ log_level = os.environ.get('LOG_LEVEL', 'INFO')
 logger = setup_logging('llms', log_level)
 
 class LLMService(llms_pb2_grpc.LLMServiceServicer):
-    def __init__(self, ollama_host="http://localhost:11434"):
-        """Initialize the LLM service with available models and API configurations."""
-        self.api_keys = {
-            "llm": os.environ.get("LLM_KEY"),
-        }
+    def __init__(self, llm7_base_url="https://api.llm7.io/v1"):
+        """Initialize the LLM service with LLM7 models."""
+        # LLM7 doesn't require a real API key, but expects "unused" as the value
+        self.api_key = os.environ.get("LLM_KEY", "unused")
+        self.llm7_base_url = llm7_base_url
         
-        self.ollama_host = ollama_host
-        self.use_ollama_fallback = os.environ.get("USE_OLLAMA_FALLBACK", "true").lower() == "true"
+        # Initialize the OpenAI client with LLM7 base URL
+        try:
+            self.client = openai.OpenAI(
+                base_url=self.llm7_base_url,
+                api_key=self.api_key
+            )
+            logger.info(f"Initialized OpenAI client with LLM7 base URL: {self.llm7_base_url}")
+        except Exception as e:
+            logger.error(f"Failed to initialize OpenAI client: {e}")
+            # Continue anyway, we'll handle errors when making API calls
         
-        # Configure Ollama client - update with the proper client configuration
-        if self.use_ollama_fallback:
-            # The Ollama client now uses the OLLAMA_HOST environment variable
-            # Set it for the client to use
-            os.environ["OLLAMA_HOST"] = self.ollama_host
-        
+        # Define all available LLM7 models with their configurations
+        # Source: https://llm7.io/docs/reference/models
         self.models = {
-            "model_name": {
-                "provider": "provider_name",
-                "language": "lang",
+            # English models
+            "gpt-4.1-nano": {
+                "provider": "llm7",
+                "language": "en",
                 "max_context_length": 128000,
-                "api_url": "url"
+            },
+            "gpt-4.1-mini": {
+                "provider": "llm7",
+                "language": "en",
+                "max_context_length": 128000,
+            },
+            "gpt-4.1-express": {
+                "provider": "llm7",
+                "language": "en", 
+                "max_context_length": 128000,
+            },
+            "gpt-4.1-preview": {
+                "provider": "llm7",
+                "language": "en",
+                "max_context_length": 128000,
+            },
+            
+            # Russian models
+            "gpt-4.1-mini-ru": {
+                "provider": "llm7",
+                "language": "ru",
+                "max_context_length": 128000,
+            },
+            "gpt-4.1-express-ru": {
+                "provider": "llm7",
+                "language": "ru",
+                "max_context_length": 128000,
+            },
+            
+            # Add model prefixes for backward compatibility
+            "llm7/gpt-4.1-nano": {
+                "provider": "llm7",
+                "language": "en",
+                "max_context_length": 128000,
+            },
+            "llm7/gpt-4.1-mini": {
+                "provider": "llm7",
+                "language": "en",
+                "max_context_length": 128000,
+            },
+            "llm7/gpt-4.1-express": {
+                "provider": "llm7",
+                "language": "en", 
+                "max_context_length": 128000,
+            },
+            "llm7/gpt-4.1-preview": {
+                "provider": "llm7",
+                "language": "en",
+                "max_context_length": 128000,
+            },
+            "llm7/gpt-4.1-mini-ru": {
+                "provider": "llm7",
+                "language": "ru",
+                "max_context_length": 128000,
+            },
+            "llm7/gpt-4.1-express-ru": {
+                "provider": "llm7",
+                "language": "ru",
+                "max_context_length": 128000,
             }
         }
         
-        # Check for required Ollama models
-        self.required_ollama_models = self._parse_required_ollama_models()
-        if self.use_ollama_fallback and self.required_ollama_models:
-            self._ensure_required_models()
+        logger.info(f"LLM Service initialized with {len(self.models)} models")
         
-        # Get available Ollama models
-        self.ollama_models = self._get_ollama_models() if self.use_ollama_fallback else {}
-        for model_name, model_info in self.ollama_models.items():
-            self.models[f"ollama/{model_name}"] = {
-                "provider": "ollama",
-                "language": "en", 
-                "max_context_length": model_info.get("context_length", 4096),
-                "api_url": f"{self.ollama_host}/api/generate"
-            }
-        
-        missing_keys = [provider for provider, key in self.api_keys.items() if not key and provider != "ollama"]
-        if missing_keys:
-            logger.warning(f"Missing API keys for providers: {', '.join(missing_keys)}")
-            
-        if self.use_ollama_fallback and not self.ollama_models:
-            logger.warning("Ollama fallback is enabled but no Ollama models were found")
-    
-    def _parse_required_ollama_models(self) -> List[str]:
-        """Parse the required Ollama models from environment variable."""
-        models_str = os.environ.get("REQUIRED_OLLAMA_MODELS", "")
-        if not models_str:
-            return []
-        
-        # Parse comma-separated list of models
-        models = [model.strip() for model in models_str.split(",") if model.strip()]
-        logger.info(f"Required Ollama models: {', '.join(models)}")
-        return models
-    
-    def _ensure_required_models(self):
-        """Ensure that all required Ollama models are available."""
-        try:
-            # Get list of available models
-            available_models = {model.model for model in ollama.list()['models']}
-            
-            # Check which required models are missing
-            missing_models = [model for model in self.required_ollama_models if model not in available_models]
-            
-            if missing_models:
-                logger.warning(f"Missing required Ollama models: {', '.join(missing_models)}")
-                
-                # Try to pull missing models if configured
-                if os.environ.get("AUTO_PULL_OLLAMA_MODELS", "false").lower() == "true":
-                    for model in missing_models:
-                        try:
-                            logger.info(f"Pulling Ollama model: {model}")
-                            ollama.pull(model)
-                            logger.info(f"Successfully pulled Ollama model: {model}")
-                        except Exception as e:
-                            logger.error(f"Failed to pull Ollama model {model}: {e}")
-                else:
-                    logger.warning("Auto-pulling is disabled. Please pull the required models manually.")
-                    for model in missing_models:
-                        logger.warning(f"Run: ollama pull {model}")
-            
-        except Exception as e:
-            logger.error(f"Error ensuring required Ollama models: {e}")
-    
-    def _get_ollama_models(self) -> Dict[str, Dict[str, Any]]:
-        """Get available Ollama models using the Python library."""
-        try:
-            models = {}
-            # Use the Ollama Python library to list models
-            ollama_models = ollama.list()
-            
-            for model in ollama_models['models']:
-                name = model.model
-                if name:
-                    try:
-                        # Get model info using the current Ollama API
-                        model_info = ollama.show(name)
-                        # Check if the parameters structure has changed
-                        if "parameters" in model_info:
-                            context_size = model_info.get("parameters", {}).get("context_length", 4096)
-                        else:
-                            context_size = model_info.get("context_length", 4096)
-                        models[name] = {
-                            "context_length": context_size
-                        }
-                    except Exception as e:
-                        logger.warning(f"Error getting info for Ollama model {name}: {e}")
-                        models[name] = {"context_length": 4096}  # Default context size
-                        
-            logger.info(f"Found {len(models)} Ollama models: {', '.join(models.keys())}")
-            return models
-        except Exception as e:
-            logger.warning(f"Error connecting to Ollama: {e}")
-            return {}
+        # Log available languages
+        languages = set(model["language"] for model in self.models.values())
+        logger.info(f"Available languages: {', '.join(languages)}")
     
     def _create_prompt(self, question: str, context: llms_pb2.Context) -> str:
         """Create a prompt combining the context and the question."""
@@ -162,56 +138,28 @@ class LLMService(llms_pb2_grpc.LLMServiceServicer):
         return prompt
     
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-    def _call_openai_api(self, model_name: str, prompt: str) -> str:
-        """Call the OpenAI API with the given prompt."""
-        api_key = self.api_keys["openai"]
-        if not api_key:
-            raise ValueError("OpenAI API key not found")
-        
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
-        }
-        
-        data = {
-            "model": model_name,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.7
-        }
-        
-        response = requests.post(
-            self.models[model_name]["api_url"],
-            headers=headers,
-            json=data
-        )
-        
-        if response.status_code != 200:
-            logger.error(f"OpenAI API error: {response.status_code} {response.text}")
-            raise Exception(f"API error: {response.status_code}")
-        
-        result = response.json()
-        return result["choices"][0]["message"]["content"]
-    
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-    def _call_ollama_api(self, model_name: str, prompt: str) -> str:
-        """Call the Ollama API using the Python library."""
+    def _call_llm7_api(self, model_name: str, prompt: str) -> str:
+        """Call the LLM7 API with the given model and prompt."""
         actual_model_name = model_name.split("/", 1)[1] if "/" in model_name else model_name
         
         try:
-            # Use the ollama.generate function from the Python library
-            response = ollama.generate(
+            logger.info(f"Calling LLM7 API with model: {actual_model_name}")
+            
+            response = self.client.chat.completions.create(
                 model=actual_model_name,
-                prompt=prompt,
-                stream=False,
-                options={
-                    "temperature": 0.7,
-                    "num_predict": 1024  # Equivalent to max_tokens
-                }
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=1024
             )
             
-            return response['response']
+            answer = response.choices[0].message.content
+            logger.debug(f"Got response from LLM7 API: {answer[:50]}...")
+            return answer
+            
         except Exception as e:
-            logger.error(f"Ollama API error: {e}")
+            logger.error(f"LLM7 API error with model {actual_model_name}: {e}")
             raise
     
     def _call_model_api(self, model_name: str, prompt: str) -> str:
@@ -221,44 +169,17 @@ class LLMService(llms_pb2_grpc.LLMServiceServicer):
         
         provider = self.models[model_name]["provider"]
         
-        if provider == "openai": # as an example
-            return self._call_openai_api(model_name, prompt)
-        elif provider == "ollama":
-            return self._call_ollama_api(model_name, prompt)
+        if provider == "llm7":
+            return self._call_llm7_api(model_name, prompt)
         else:
             raise ValueError(f"Provider {provider} not supported")
     
-    def _try_with_fallback(self, model_name: str, prompt: str) -> tuple[str, bool]:
-        """
-        Try to call the specified model, falling back to Ollama if needed.
-        Returns the answer and whether a fallback was used.
-        """
-        try:
-            return self._call_model_api(model_name, prompt), False
-        except Exception as e:
-            logger.warning(f"Error with primary model {model_name}: {e}")
-            
-            if not self.use_ollama_fallback or not self.ollama_models:
-                raise  
-            
-            # Try to use preferred fallback models first (from required models list)
-            preferred_models = [model for model in self.required_ollama_models if model in self.ollama_models]
-            all_models = list(preferred_models) + [model for model in self.ollama_models if model not in preferred_models]
-            
-            last_error = None
-            for ollama_model_name in all_models:
-                fallback_model = f"ollama/{ollama_model_name}"
-                try:
-                    logger.info(f"Trying fallback with Ollama model: {ollama_model_name}")
-                    return self._call_ollama_api(fallback_model, prompt), True
-                except Exception as err:
-                    last_error = err
-                    logger.warning(f"Fallback with {ollama_model_name} failed: {err}")
-            
-            if last_error:
-                raise last_error
-            else:
-                raise Exception("All LLM providers failed, including fallbacks")
+    def _get_default_model(self, language: str) -> str:
+        """Get the default model for the specified language."""
+        if language == "ru":
+            return "gpt-4.1-mini-ru"
+        else:  # Default to English
+            return "gpt-4.1-nano"
     
     def GenerateAnswer(self, request, context):
         """Generate an answer for the given question using the provided context."""
@@ -267,51 +188,42 @@ class LLMService(llms_pb2_grpc.LLMServiceServicer):
         user_context = request.context
         
         try:
-            if model_name not in self.models and not model_name.startswith("ollama/"):
-                if self.use_ollama_fallback and self.ollama_models:
-                    # Try to use a required model first if available
-                    for required_model in self.required_ollama_models:
-                        if required_model in self.ollama_models:
-                            model_name = f"ollama/{required_model}"
-                            logger.info(f"Model not found, using preferred Ollama model: {model_name}")
+            # Check if the requested model exists
+            if model_name not in self.models:
+                # If the model name includes a prefix, try without it
+                if "/" in model_name:
+                    base_model_name = model_name.split("/", 1)[1]
+                    if base_model_name in self.models:
+                        model_name = base_model_name
+                        logger.info(f"Using base model name: {model_name}")
+                    else:
+                        # Find a model for the same language as the requested one
+                        language = "en"  # Default language
+                        for model_key, model_info in self.models.items():
+                            if model_key.lower() == model_name.lower() or model_key.lower().endswith(f"/{model_name.lower()}"):
+                                language = model_info["language"]
+                                break
+                        
+                        default_model = self._get_default_model(language)
+                        logger.info(f"Model {model_name} not found, using default model for language {language}: {default_model}")
+                        model_name = default_model
+                else:
+                    # Find a suitable default model
+                    language = "en"  # Default to English
+                    for existing_model in self.models.keys():
+                        if existing_model.lower() == model_name.lower():
+                            model_name = existing_model  # Use the correct case
                             break
                     else:
-                        # If no required model is available, use the first available one
-                        first_ollama_model = next(iter(self.ollama_models.keys()))
-                        model_name = f"ollama/{first_ollama_model}"
-                        logger.info(f"Model not found, using Ollama fallback: {model_name}")
-                else:
-                    context.abort(StatusCode.NOT_FOUND, f"Model {model_name} not found")
-            
-            provider = self.models[model_name]["provider"]
-            if provider != "ollama" and not self.api_keys[provider]:
-                if self.use_ollama_fallback and self.ollama_models:
-                    # Try to use a required model first if available
-                    for required_model in self.required_ollama_models:
-                        if required_model in self.ollama_models:
-                            model_name = f"ollama/{required_model}"
-                            provider = "ollama"
-                            logger.info(f"API key not found, using preferred Ollama model: {model_name}")
-                            break
-                    else:
-                        # If no required model is available, use the first available one
-                        first_ollama_model = next(iter(self.ollama_models.keys()))
-                        model_name = f"ollama/{first_ollama_model}"
-                        provider = "ollama"
-                        logger.info(f"API key not found, using Ollama fallback: {model_name}")
-                else:
-                    context.abort(StatusCode.UNAVAILABLE, f"API key for {provider} not configured")
+                        default_model = self._get_default_model(language)
+                        logger.info(f"Model {model_name} not found, using default model: {default_model}")
+                        model_name = default_model
             
             prompt = self._create_prompt(question, user_context)
-
-            logger.info(f"Generating response for prompt: {prompt}")
+            logger.info(f"Generating answer with model {model_name} for prompt: {prompt[:100]}...")
             
-            answer, used_fallback = self._try_with_fallback(model_name, prompt)
-            
-            log_message = f"Generated answer for question: {question[:50]}..."
-            if used_fallback:
-                log_message += " (used Ollama fallback)"
-            logger.info(log_message)
+            answer = self._call_model_api(model_name, prompt)
+            logger.info(f"Generated answer for question: {question[:50]}...")
             
             return llms_pb2.GenerateAnswerResponse(answer=answer)
             
@@ -325,15 +237,15 @@ class LLMService(llms_pb2_grpc.LLMServiceServicer):
         
         try:
             models_list = []
+            logger.info(f"Getting available models for language: {language or 'any'}")
             
             for name, config in self.models.items():
-                if config["provider"] == "ollama":
+                # Skip models with provider prefix for cleaner results
+                if "/" in name:
                     continue
                     
+                # Only include models for the requested language if specified
                 if language and config["language"] != language:
-                    continue
-                
-                if not self.api_keys[config["provider"]]:
                     continue
                 
                 model = llms_pb2.Model(
@@ -343,30 +255,43 @@ class LLMService(llms_pb2_grpc.LLMServiceServicer):
                 )
                 models_list.append(model)
             
-            if self.use_ollama_fallback:
-                for ollama_model in self.ollama_models.keys():
-                    if language and language != "en":
-                        continue
+            # If no models are found for the requested language, add default models
+            if not models_list:
+                logger.warning(f"No models found for language: {language}. Adding default models.")
+                if language == "ru":
+                    default_model = "gpt-4.1-mini-ru"
+                else:
+                    default_model = "gpt-4.1-nano"
                     
-                    model = llms_pb2.Model(
-                        name=f"ollama/{ollama_model}",
-                        provider="ollama",
-                        language="en"
-                    )
-                    models_list.append(model)
+                models_list.append(llms_pb2.Model(
+                    name=default_model,
+                    provider="llm7",
+                    language="en" if language != "ru" else "ru"
+                ))
             
+            logger.info(f"Returning {len(models_list)} available models")
             return llms_pb2.GetAvailableModelsResponse(models=models_list)
             
         except Exception as e:
             logger.error(f"Error getting available models: {e}")
-            context.abort(StatusCode.INTERNAL, f"Failed to get available models: {str(e)}")
+            # Return at least one model to prevent failures
+            default_model = self._get_default_model(language or "en")
+            default_lang = "ru" if language == "ru" else "en"
+            
+            return llms_pb2.GetAvailableModelsResponse(models=[
+                llms_pb2.Model(
+                    name=default_model,
+                    provider="llm7",
+                    language=default_lang
+                )
+            ])
 
 
-def serve(host="0.0.0.0", port=50052, ollama_host="http://localhost:11434"):
+def serve(host="0.0.0.0", port=50052, llm7_base_url="https://api.llm7.io/v1"):
     """Start the gRPC server."""
     server = grpc.server(concurrent.futures.ThreadPoolExecutor(max_workers=10))
     llms_pb2_grpc.add_LLMServiceServicer_to_server(
-        LLMService(ollama_host=ollama_host), server
+        LLMService(llm7_base_url=llm7_base_url), server
     )
     server.add_insecure_port(f"{host}:{port}")
     server.start()
@@ -381,5 +306,6 @@ def serve(host="0.0.0.0", port=50052, ollama_host="http://localhost:11434"):
 
 
 if __name__ == "__main__":
-    ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-    serve(ollama_host=ollama_host)
+    llm7_base_url = os.environ.get("LLM7_BASE_URL", "https://api.llm7.io/v1")
+    port = int(os.environ.get("GRPC_PORT", "50052"))
+    serve(host="0.0.0.0", port=port, llm7_base_url=llm7_base_url)

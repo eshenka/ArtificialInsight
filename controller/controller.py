@@ -386,12 +386,15 @@ class ControllerServicer(controller_pb2_grpc.ControllerServicer):
         try:
             # Convert rules data back to protobuf format
             scrape_rules_proto = common_pb2.ScrapeRules()
+            
+            # Fix: Convert string values to integers for max_depth and max_pages
             if rules_data.get("max_depth") is not None:
                 try:
                     scrape_rules_proto.max_depth = int(rules_data["max_depth"])
                 except (ValueError, TypeError):
                     self.log_event(f"Invalid max_depth value: {rules_data['max_depth']}, using default", logging.WARNING)
                     scrape_rules_proto.max_depth = 3  # Default value
+                    
             if rules_data.get("max_pages") is not None:
                 try:
                     scrape_rules_proto.max_pages = int(rules_data["max_pages"])
