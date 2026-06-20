@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect"/>
+    <link as="style" href="https://fonts.googleapis.com/css2?display=swap&family=Inter%3Awght%40400%3B500%3B700%3B900&family=Noto+Sans%3Awght%40400%3B500%3B700%3B900" onload="this.rel='stylesheet'" rel="stylesheet"/>
+    <title>Artificial Insight - Create Pipeline</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <style>
+        .code-block {
+            font-family: 'Courier New', Courier, monospace;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900" style='font-family: Inter, "Noto Sans", sans-serif;'>
+    <div class="relative flex size-full min-h-screen flex-col group/design-root overflow-x-hidden">
+        <div class="layout-container flex h-full grow flex-col">
+            <header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 px-6 sm:px-10 py-4 bg-white shadow-sm">
+                <div class="flex items-center gap-3 text-slate-800">
+                    <div class="size-6 text-blue-600">
+                        <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                            <path clip-rule="evenodd" d="M24 18.4228L42 11.475V34.3663C42 34.7796 41.7457 35.1504 41.3601 35.2992L24 42V18.4228Z" fill="currentColor" fill-rule="evenodd"></path>
+                            <path clip-rule="evenodd" d="M24 8.18819L33.4123 11.574L24 15.2071L14.5877 11.574L24 8.18819ZM9 15.8487L21 20.4805V37.6263L9 32.9945V15.8487ZM27 37.6263V20.4805L39 15.8487V32.9945L27 37.6263ZM25.354 2.29885C24.4788 1.98402 23.5212 1.98402 22.646 2.29885L4.98454 8.65208C3.7939 9.08038 3 10.2097 3 11.475V34.3663C3 36.0196 4.01719 37.5026 5.55962 38.098L22.9197 44.7987C23.6149 45.0671 24.3851 45.0671 25.0803 44.7987L42.4404 38.098C43.9828 37.5026 45 36.0196 45 34.3663V11.475C45 10.2097 44.2061 9.08038 43.0155 8.65208L25.354 2.29885Z" fill="currentColor" fill-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <h1 class="text-slate-800 text-xl font-bold tracking-tight">Artificial Insight</h1>
+                </div>
+            </header>
+
+            <main class="flex flex-1 justify-center py-8 px-4 sm:px-6 lg:px-8">
+                <div class="layout-content-container flex flex-col max-w-3xl w-full">
+                    <header class="mb-6">
+                        <h2 class="text-slate-800 text-3xl font-bold tracking-tight mb-1">Create RAG Pipeline</h2>
+                        <p class="text-slate-500 text-sm">Configure your documentation scraping pipeline and knowledge base.</p>
+                    </header>
+
+                    <form id="pipelineForm" class="space-y-6">
+                        <!-- Basic Information -->
+                        <div class="bg-white shadow-lg rounded-xl p-6 border border-slate-200">
+                            <h3 class="text-slate-800 text-xl font-semibold tracking-tight mb-4">Basic Information</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="space-y-1">
+                                    <label class="text-slate-700 text-sm font-medium" for="userName">User Name</label>
+                                    <input type="text" id="userName" class="form-input w-full rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 bg-white placeholder:text-slate-400 text-sm py-2.5 px-3" placeholder="Enter your name" required>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-slate-700 text-sm font-medium" for="language">Language</label>
+                                    <select id="language" class="form-select w-full rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 bg-white text-sm py-2.5 px-3" required>
+                                        <option value="">Select language</option>
+                                        <option value="english">English</option>
+                                        <option value="russian">Russian</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1 md:col-span-2">
+                                    <label class="text-slate-700 text-sm font-medium" for="description">Description</label>
+                                    <textarea id="description" class="form-textarea w-full rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 bg-white placeholder:text-slate-400 text-sm py-2.5 px-3 min-h-[80px] resize-vertical" placeholder="Describe your pipeline..." required></textarea>
+                                </div>
+                                <div class="space-y-1 md:col-span-2">
+                                    <label class="text-slate-700 text-sm font-medium" for="entryUrl">Entry URL</label>
+                                    <input type="url" id="entryUrl" class="form-input w-full rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 bg-white placeholder:text-slate-400 text-sm py-2.5 px-3" placeholder="https://example.com/docs" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Scraping Configuration -->
+                        <div class="bg-white shadow-lg rounded-xl p-6 border border-slate-200">
+                            <h3 class="text-slate-800 text-xl font-semibold tracking-tight mb-4">Scraping Configuration</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                <div class="space-y-1">
+                                    <label class="text-slate-700 text-sm font-medium" for="maxDepth">Maximum Depth</label>
+                                    <input type="number" id="maxDepth" class="form-input w-full rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 bg-white placeholder:text-slate-400 text-sm py-2.5 px-3" placeholder="5" min="1" max="20" required>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-slate-700 text-sm font-medium" for="maxPages">Maximum Pages</label>
+                                    <input type="number" id="maxPages" class="form-input w-full rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 bg-white placeholder:text-slate-400 text-sm py-2.5 px-3" placeholder="100" min="1" max="10000" required>
+                                </div>
+                            </div>
+
+                            <!-- URL Patterns -->
+                            <div class="space-y-3 mb-6">
+                                <label class="text-slate-700 text-sm font-medium">URL Patterns</label>
+                                <div id="patternsList" class="space-y-3">
+                                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                            <div class="space-y-1">
+                                                <label class="text-slate-600 text-xs font-medium">URL Pattern</label>
+                                                <input type="text" class="pattern-url form-input w-full rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 bg-white placeholder:text-slate-400 text-sm py-2 px-3" placeholder="https://example.com/docs/*" required>
+                                            </div>
+                                            <div class="space-y-1">
+                                                <label class="text-slate-600 text-xs font-medium">CSS Selector</label>
+                                                <input type="text" class="pattern-selector form-input w-full rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 bg-white placeholder:text-slate-400 text-sm py-2 px-3" placeholder=".content, article">
+                                            </div>
+                                        </div>
+                                        <button type="button" class="inline-flex items-center justify-center rounded-lg h-8 px-3 bg-red-600 text-white text-xs font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors" onclick="removePattern(this)">
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button type="button" class="inline-flex items-center justify-center rounded-lg h-9 px-4 bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-colors border border-slate-300" onclick="addPattern()">
+                                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    Add Pattern
+                                </button>
+                            </div>
+
+                            <!-- Forbidden URLs -->
+                            <div class="space-y-3">
+                                <label class="text-slate-700 text-sm font-medium">Forbidden URLs</label>
+                                <div id="forbiddenList" class="space-y-3">
+                                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <div class="flex gap-3 items-end">
+                                            <div class="flex-1 space-y-1">
+                                                <label class="text-slate-600 text-xs font-medium">URL</label>
+                                                <input type="url" class="forbidden-url form-input w-full rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 bg-white placeholder:text-slate-400 text-sm py-2 px-3" placeholder="https://example.com/admin/*">
+                                            </div>
+                                            <button type="button" class="inline-flex items-center justify-center rounded-lg h-8 px-3 bg-red-600 text-white text-xs font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors" onclick="removeForbidden(this)">
+                                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="inline-flex items-center justify-center rounded-lg h-9 px-4 bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-colors border border-slate-300" onclick="addForbidden()">
+                                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    Add URL
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full inline-flex items-center justify-center rounded-lg h-12 px-6 bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
+                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            Create Pipeline
+                        </button>
+                    </form>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        function addPattern() {
+            const patternsList = document.getElementById('patternsList');
+            const newPattern = document.createElement('div');
+            newPattern.className = 'bg-slate-50 p-4 rounded-lg border border-slate-200';
+            newPattern.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div class="space-y-1">
+                        <label class="text-slate-600 text-xs font-medium">URL Pattern</label>
+                        <input type="text" class="pattern-url form-input w-full rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 bg-white placeholder:text-slate-400 text-sm py-2 px-3" placeholder="https://example.com/docs/*" required>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-slate-600 text-xs font-medium">CSS Selector</label>
+                        <input type="text" class="pattern-selector form-input w-full rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 bg-white placeholder:text-slate-400 text-sm py-2 px-3" placeholder=".content, article" required>
+                    </div>
+                </div>
+                <button type="button" class="inline-flex items-center justify-center rounded-lg h-8 px-3 bg-red-600 text-white text-xs font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors" onclick="removePattern(this)">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            `;
+            patternsList.appendChild(newPattern);
+        }
+
+        function removePattern(button) {
+            const patternsList = document.getElementById('patternsList');
+            if (patternsList.children.length > 1) {
+                button.closest('.bg-slate-50').remove();
+            }
+        }
+
+        function addForbidden() {
+            const forbiddenList = document.getElementById('forbiddenList');
+            const newForbidden = document.createElement('div');
+            newForbidden.className = 'bg-slate-50 p-4 rounded-lg border border-slate-200';
+            newForbidden.innerHTML = `
+                <div class="flex gap-3 items-end">
+                    <div class="flex-1 space-y-1">
+                        <label class="text-slate-600 text-xs font-medium">URL</label>
+                        <input type="url" class="forbidden-url form-input w-full rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-slate-300 bg-white placeholder:text-slate-400 text-sm py-2 px-3" placeholder="https://example.com/admin/*">
+                    </div>
+                    <button type="button" class="inline-flex items-center justify-center rounded-lg h-8 px-3 bg-red-600 text-white text-xs font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors" onclick="removeForbidden(this)">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            forbiddenList.appendChild(newForbidden);
+        }
+
+        function removeForbidden(button) {
+            const forbiddenList = document.getElementById('forbiddenList');
+            if (forbiddenList.children.length > 1) {
+                button.closest('.bg-slate-50').remove();
+            }
+        }
+
+        document.getElementById('pipelineForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Collect form data
+            const formData = {
+                userName: document.getElementById('userName').value,
+                description: document.getElementById('description').value,
+                language: document.getElementById('language').value,
+                entryUrl: document.getElementById('entryUrl').value,
+                maxDepth: parseInt(document.getElementById('maxDepth').value),
+                maxPages: parseInt(document.getElementById('maxPages').value),
+                patterns: [],
+                forbiddenUrls: []
+            };
+
+            // Collect patterns
+            const patternItems = document.querySelectorAll('#patternsList > div');
+            patternItems.forEach(item => {
+                const urlPattern = item.querySelector('.pattern-url').value;
+                const cssSelector = item.querySelector('.pattern-selector').value;
+                if (urlPattern && cssSelector) {
+                    formData.patterns.push({ urlPattern, cssSelector });
+                }
+            });
+
+            // Collect forbidden URLs
+            const forbiddenItems = document.querySelectorAll('#forbiddenList > div');
+            forbiddenItems.forEach(item => {
+                const url = item.querySelector('.forbidden-url').value;
+                if (url) {
+                    formData.forbiddenUrls.push(url);
+                }
+            });
+
+            // Show loading state
+            const submitButton = document.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.innerHTML;
+            submitButton.innerHTML = `
+                <svg class="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Creating Pipeline...
+            `;
+            submitButton.disabled = true;
+
+            // Convert form data to match API expectations
+            const apiFormData = new FormData();
+            apiFormData.append('user_name', formData.userName);
+            apiFormData.append('description', formData.description);
+            apiFormData.append('language', formData.language === 'english' ? 'en' : 'ru');
+            apiFormData.append('entry_docs_url', formData.entryUrl);
+            
+            // Create rules object
+            const rules = {
+                max_depth: formData.maxDepth,
+                max_pages: formData.maxPages,
+                scrape_patterns: formData.patterns.map(pattern => ({
+                    url: { pattern: pattern.urlPattern },
+                    css_selector: pattern.cssSelector
+                })),
+                forbidden_urls: formData.forbiddenUrls.map(url => ({
+                    pattern: url
+                }))
+            };
+            
+            // Stringify the rules object
+            apiFormData.append('rules', JSON.stringify(rules));
+
+            // Send request to API
+            fetch('/api/pipeline', {
+                method: 'POST',
+                body: apiFormData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Server responded with status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Pipeline creation started:', data);
+                
+                if (data.job_id) {
+                    // Store the job ID and start polling for status
+                    const jobId = data.job_id;
+                    localStorage.setItem('currentPipelineJobId', jobId);
+                    
+                    // Show success message and redirect to status page
+                    alert(`Pipeline creation started! Job ID: ${jobId}`);
+                    
+                    // Poll for job completion (optional)
+                    pollJobStatus(jobId);
+                }
+            })
+            .catch(error => {
+                console.error('Error creating pipeline:', error);
+                alert(`Error creating pipeline: ${error.message}`);
+                
+                // Reset button
+                submitButton.innerHTML = originalButtonText;
+                submitButton.disabled = false;
+            });
+        });
+
+        // Function to poll job status
+        function pollJobStatus(jobId) {
+            const statusInterval = setInterval(() => {
+                fetch(`/api/pipeline/status/${jobId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Job status:', data);
+                        if (data.status === 'completed') {
+                            clearInterval(statusInterval);
+                            
+                            // Store the token for later use
+                            if (data.result && data.result.token) {
+                                localStorage.setItem('ragToken', data.result.token);
+                                
+                                // Redirect to playground with exact URL
+                                window.location.href = 'http://localhost:5173/playground';
+                            }
+                        } else if (data.status === 'failed') {
+                            clearInterval(statusInterval);
+                            alert(`Pipeline creation failed: ${data.message}`);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking job status:', error);
+                        clearInterval(statusInterval);
+                    });
+            }, 2000); // Check every 2 seconds
+        }
+    </script>
+</body>
+</html>

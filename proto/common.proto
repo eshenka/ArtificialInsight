@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package common;
+
+message Document {
+    // Source URL of the document
+    string source = 1;
+
+    // Conetent of the document, in Text or Markdown format
+    string content = 3;
+}
+
+message ScrapeRules {
+    uint32 max_depth = 1;
+    uint32 max_pages = 2;
+    repeated Rule scrape_patterns = 3;
+    repeated Regex forbidden_urls = 4;
+}
+
+message Rule {
+    Regex url = 1;
+    string css_selector = 2;
+}
+
+message Regex {
+    string pattern = 1;
+}

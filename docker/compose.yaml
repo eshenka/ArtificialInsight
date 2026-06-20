@@ -1,0 +1,513 @@
+# ArtificialInsight Docker Compose Configuration
+#
+# This file defines all services required to run the complete ArtificialInsight system.
+# Configuration can be done through environment variables or by editing this file directly.
+#
+# Usage:
+#   1. Configure environment variables in .env file (copy from .env.example)
+#   2. Start all services: docker-compose up -d
+#   3. Access Web UI at http://localhost:5173
+
+services:
+  #############################################
+  # Frontend Services
+  #############################################
+  
+  # Web User Interface
+  webui:
+    build:
+      context: ..
+      dockerfile: docker/webui.Dockerfile
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-/api}
+    ports:
+      - "${WEBUI_PORT:-5173}:80"  # This maps external port 5173 to container port 80
+    depends_on:
+      - service-api    
+    volumes:
+      - ../docker/nginx.conf:/etc/nginx/conf.d/default.conf
+    restart: unless-stopped
+    networks:
+      - frontend-network
+      - elk-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "webui"
+  # API Gateway Service
+  service-api:
+    build:
+      context: ..
+      dockerfile: docker/service-api.Dockerfile
+    environment:
+      - CONTROLLER_ADDR=controller:${CONTROLLER_PORT:-50050}
+      - GATEWAY_HTTP_PORT=${GATEWAY_HTTP_PORT:-8000}
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "${GATEWAY_EXPOSED_PORT:-8000}:${GATEWAY_HTTP_PORT:-8000}"
+    depends_on:
+      - controller
+      - redis
+    restart: unless-stopped
+    networks:
+      - frontend-network
+      - backend-network
+      - elk-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "service-api"
+
+  #############################################
+  # Core Services
+  #############################################
+    # Controller Service - Central orchestration component
+  controller:
+    build:
+      context: ..
+      dockerfile: docker/controller.Dockerfile
+    environment:
+      - CONTROLLER_PORT=${CONTROLLER_PORT:-50050}
+      - CONTROLLER_HOST=[::]
+      - USERDB_SERVICE=userdb:${USERDB_PORT:-2780}
+      - VECTORDB_SERVICE=vectordb:${VECTORDB_PORT:-50051}
+      - SCRAPING_SERVICE=scraping:${SCRAPING_PORT:-50051}
+      - LLM_SERVICE=llms:${LLM_PORT:-50052}
+      - REDIS_URL=redis://redis:6379
+      - MAX_WORKERS=${CONTROLLER_MAX_WORKERS:-10}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    restart: unless-stopped    
+    depends_on:
+      userdb:
+        condition: service_started
+      vectordb:
+        condition: service_healthy
+      scraping:
+        condition: service_started
+      llms:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - backend-network
+      - elk-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "controller"
+
+  # LLM Service - Manages LLM access
+  llms:
+    build:
+      context: ..
+      dockerfile: docker/llms.Dockerfile
+    environment:
+      - LLM7_BASE_URL=${LLM7_BASE_URL:-https://api.llm7.io/v1}
+      - LLM_KEY=${LLM_KEY:-unused}
+      - GRPC_PORT=${LLM_PORT:-50052}
+    restart: unless-stopped
+    networks:
+      - backend-network
+      - elk-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "llms"
+
+  # Scraping Service - Web content extraction
+  scraping:
+    build:
+      context: ..
+      dockerfile: docker/scraping.Dockerfile
+    environment:
+      - SCRAPING_PORT=${SCRAPING_PORT:-50051}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - REQUEST_TIMEOUT=${SCRAPING_TIMEOUT:-30}
+      - MAX_WORKERS=${SCRAPING_MAX_WORKERS:-10}
+      - USER_AGENT=${SCRAPING_USER_AGENT:-ArtificialInsightScraper/1.0}    
+    restart: unless-stopped
+    networks:
+      - backend-network
+      - elk-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "scraping"
+  # Vector Database Service - Document storage and retrieval
+  vectordb:
+    build:
+      context: ..
+      dockerfile: docker/vectordb.Dockerfile
+    environment:
+      - MILVUS_HOST=milvus
+      - MILVUS_PORT=19530
+      - SERVICE_HOST=0.0.0.0
+      - SERVICE_PORT=${VECTORDB_PORT:-50051}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    depends_on:
+      - milvus
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s = socket.socket(); s.settimeout(5); result = s.connect_ex(('localhost', 50051)); exit(0 if result == 0 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s    
+    networks:
+      - backend-network
+      - milvus-network
+      - elk-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "vectordb"
+
+  # User Database Service - User management
+  userdb:
+    build:
+      context: ..
+      dockerfile: docker/userdb.Dockerfile
+    environment:
+      - USERDB_PG_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-aiusers}
+      - USERDB_ADDR=0.0.0.0
+      - USERDB_PORT=${USERDB_PORT:-2780}
+      - RUST_LOG=${LOG_LEVEL:-info}
+    restart: unless-stopped    
+    depends_on:
+      - postgres
+    networks:
+      - backend-network
+      - postgres-network
+      - elk-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "userdb"
+
+  # Redis - Message queue for pipeline creation
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  #############################################
+  # Backend Dependencies
+  #############################################
+  
+  # PostgreSQL - Database for user management
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-aiusers}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - postgres-network
+
+  # # Ollama - Local LLM provider
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   restart: unless-stopped
+  #   networks:
+  #     - ollama-network
+
+  # Milvus - Vector database components
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.18
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - etcd_data:/etcd
+    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - milvus-network
+
+  minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - minio_data:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - milvus-network
+
+  milvus:
+    container_name: milvus-standalone
+    image: milvusdb/milvus:v2.5.10
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+    - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    volumes:
+      - milvus_data:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - etcd
+      - minio
+    networks:
+      - milvus-network
+    attach: false
+
+  # Attu - Milvus administration tool  
+  attu:
+    image: zilliz/attu:v2.5.6
+    environment:
+      - MILVUS_URL=milvus:19530
+      - ATTU_LOG_LEVEL=${ATTU_LOG_LEVEL:-info}
+    ports:
+      - "${ATTU_PORT:-7999}:3000"
+    restart: unless-stopped
+    depends_on:
+      - milvus
+    networks:
+      - milvus-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  #############################################
+  # ELK Stack - Logging Infrastructure
+  #############################################
+
+  # Elasticsearch - Log storage and search
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
+    restart: unless-stopped
+    networks:
+      - elk-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5 
+  logstash:
+    image: logstash:8.11.0
+    container_name: logstash
+    volumes:
+      - ../elk/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ../elk/logstash/pipeline:/usr/share/logstash/pipeline:ro
+    ports:
+      - "${LOGSTASH_PORT:-5044}:5044"
+      - "${LOGSTASH_UDP_PORT:-5000}:5000/udp"
+    environment:
+      - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+    networks:
+      - elk-network
+      - backend-network
+  # Filebeat - Log collection and forwarding
+  filebeat:
+    image: elastic/filebeat:8.11.0
+    container_name: filebeat
+    user: root
+    volumes:
+      - ../elk/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: filebeat -e -strict.perms=false
+    depends_on:
+      - logstash
+    restart: unless-stopped
+    networks:
+      - elk-network
+
+  # Kibana - Log visualization and dashboards
+  kibana:
+    image: kibana:8.11.0
+    container_name: kibana
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+    networks:
+      - elk-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ELK Setup - Automatic configuration script
+  elk-setup:
+    build:
+      context: ../elk
+      dockerfile: ../docker/elk-setup.Dockerfile
+    container_name: elk-setup
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - KIBANA_URL=http://kibana:5601
+      - LOGSTASH_URL=http://logstash:9600
+      - ELK_SETUP_MAX_RETRIES=30
+      - ELK_SETUP_RETRY_DELAY=10
+    depends_on:
+      - elasticsearch
+      - kibana
+      - logstash
+    restart: "no"
+    networks:
+      - elk-network    
+    volumes:
+      - ../elk/kibana/dashboards:/usr/share/kibana/dashboards:ro
+
+#############################################
+# Networks
+#############################################
+networks:
+  frontend-network:
+    driver: bridge
+  backend-network:
+    driver: bridge
+  postgres-network:
+    driver: bridge
+  milvus-network:
+    driver: bridge
+  elk-network:
+    driver: bridge
+
+#############################################
+# Volumes
+#############################################
+volumes:
+  postgres_data:
+    driver: local
+  milvus_data:
+    driver: local
+  etcd_data:
+    driver: local
+  minio_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# Environment Variable Configuration:
+# ==================================
+#
+# Web UI Configuration:
+# - WEBUI_PORT: Port to expose the Web UI (default: 5173)
+# - VITE_API_BASE_URL: URL of the API Gateway (default: http://localhost:8000)
+#
+# API Gateway Configuration:
+# - GATEWAY_HTTP_PORT: Internal port for the gateway service (default: 8000)
+# - GATEWAY_EXPOSED_PORT: External port for the gateway service (default: 8000)
+#
+# Controller Configuration:
+# - CONTROLLER_PORT: Port for the controller service (default: 50050)
+# - CONTROLLER_MAX_WORKERS: Maximum worker threads (default: 10)
+#
+# LLM Service Configuration:
+# - LLM_PORT: Port for the LLM service (default: 50052)
+# - LLM_KEY: API key for external LLM provider (default: empty)
+# - USE_OLLAMA_FALLBACK: Whether to use Ollama as fallback (default: true)
+# - REQUIRED_OLLAMA_MODELS: Comma-separated list of required Ollama models (default: llama2:latest,mistral:latest)
+# - AUTO_PULL_OLLAMA_MODELS: Whether to automatically pull required Ollama models (default: true)
+#
+# Scraping Service Configuration:
+# - SCRAPING_PORT: Port for the scraping service (default: 50051)
+# - SCRAPING_TIMEOUT: HTTP request timeout in seconds (default: 30)
+# - SCRAPING_MAX_WORKERS: Maximum worker threads (default: 10)
+# - SCRAPING_USER_AGENT: User agent for HTTP requests (default: ArtificialInsightScraper/1.0)
+#
+# Vector Database Configuration:
+# - VECTORDB_PORT: Port for the vector database service (default: 50051)
+# - VECTORDB_OLLAMA_HOST: URL for Ollama API (default: http://ollama:11434)
+# - VECTORDB_OLLAMA_MODELS: Comma-separated list of Ollama model names (default: nomic-embed-text)
+#
+# User Database Configuration:
+# - USERDB_PORT: Port for the user database service (default: 2780)
+#
+# PostgreSQL Configuration:
+# - POSTGRES_PASSWORD: PostgreSQL password (default: password)
+# - POSTGRES_USER: PostgreSQL username (default: postgres)
+# - POSTGRES_DB: PostgreSQL database name (default: aiusers)
+#
+# Attu Configuration:
+# - ATTU_PORT: Port to expose the Attu UI (default: 8000)
+# - ATTU_LOG_LEVEL: Logging level for Attu (default: info)
+#
+# ELK Stack Configuration:
+# - ELASTICSEARCH_PORT: Port to expose Elasticsearch (default: 9200)
+# - LOGSTASH_PORT: Port for Logstash beats input (default: 5044)
+# - LOGSTASH_UDP_PORT: Port for Logstash UDP input (default: 5000)
+# - KIBANA_PORT: Port to expose Kibana (default: 5601)
+#
+# General Configuration:
+# - LOG_LEVEL: Logging level for all services (default: INFO)

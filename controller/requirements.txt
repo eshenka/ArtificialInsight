@@ -1,0 +1,5 @@
+grpcio>=1.67.1
+protobuf>=3.20.0
+python-dotenv>=1.0.0
+pytest
+redis>=5.0.0

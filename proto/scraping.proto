@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package scraping;
+
+import "common.proto";
+
+service ScrapingService {
+    // # Scrape documentation
+    //
+    // Start with `entry` URL
+    //
+    // Recursively visit each page with urls that match at least one of
+    // regexes provided in `rules.scrape_patterns`. If a match is found,
+    // extract only the text that is located in the HTML element that matches the `css_selector` 
+    // provided in the rule. If no `css_selector` is provided, use `main` as the default.
+    // 
+    // Do not exceed `rules.max_depth` levels of recursion if `rules.max_depth` is set
+    // or `rules.max_pages` pages if `rules.max_pages` is set
+    // 
+    // Do not visit any page that matches any of the regexes provided in `rules.forbidden_urls`
+    // 
+    // Try to split each page into multiple documents using a recursive algorithm
+    rpc Scrape(ScrapeRequest) returns (ScrapeResponse) {}
+}
+
+message ScrapeRequest {
+    string entry = 1;
+    common.ScrapeRules rules = 2;
+}
+
+message ScrapeResponse {
+    repeated common.Document documents = 1;
+}
